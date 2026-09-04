@@ -48,12 +48,14 @@ export const DocumentWizard: React.FC<DocumentWizardProps> = ({
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
 
   // Auto-populate variables whenever person or template changes
-  React.useEffect(() => {
-    if (!selectedPerson || !selectedTemplate) return;
+  const [prevSelectionKey, setPrevSelectionKey] = useState<string | null>(null);
+  const currentKey = `${selectedPerson ? ('employeeId' in selectedPerson ? selectedPerson.employeeId : selectedPerson.contractorId) : ''}_${selectedTemplate?.id || ''}`;
 
-    const isEmp = 'employeeId' in selectedPerson;
+  if (currentKey !== prevSelectionKey && (selectedPerson || selectedTemplate)) {
+    setPrevSelectionKey(currentKey);
+    const isEmp = selectedPerson && 'employeeId' in selectedPerson;
     const emp = isEmp ? (selectedPerson as Employee) : null;
-    const con = !isEmp ? (selectedPerson as Contractor) : null;
+    const con = selectedPerson && !isEmp ? (selectedPerson as Contractor) : null;
 
     const initialValues: Record<string, string> = {
       joining_date: emp?.dateOfJoining || '10-08-2026',
@@ -92,8 +94,8 @@ export const DocumentWizard: React.FC<DocumentWizardProps> = ({
       accessories_provided: 'Laptop Charger / Mouse'
     };
 
-    setVariableValues(initialValues);
-  }, [selectedPerson, selectedTemplate]);
+    setVariableValues(prev => ({ ...prev, ...initialValues }));
+  }
 
   // Handle Step 5 Preview HTML rendering
   const activeVersion = selectedTemplate?.versions.find(v => v.id === selectedVersionId) || selectedTemplate?.versions[0];

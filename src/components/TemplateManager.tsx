@@ -19,17 +19,16 @@ export const TemplateManager: React.FC<TemplateManagerProps> = ({
   onNavigateToWizard
 }) => {
   const [selectedTemplate, setSelectedTemplate] = useState<DocumentTemplate>(templates[0] || null);
-  const [editingContent, setEditingContent] = useState<string>('');
-  const [changelogNote, setChangelogNote] = useState<string>('');
-  const [isEditing, setIsEditing] = useState(false);
-  const [compareVersions, setCompareVersions] = useState<TemplateVersion[] | null>(null);
+  const [editingContent, setEditingContent] = useState<string>(() => templates[0]?.versions?.[0]?.content || '');
+  const [prevTemplateId, setPrevTemplateId] = useState<string | null>(() => templates[0]?.id || null);
 
-  // Initialize editing content when template selection changes
-  React.useEffect(() => {
-    if (selectedTemplate && selectedTemplate.versions && selectedTemplate.versions.length > 0) {
+  // Sync editing content when template selection changes
+  if (selectedTemplate?.id !== prevTemplateId) {
+    setPrevTemplateId(selectedTemplate?.id || null);
+    if (selectedTemplate?.versions?.length) {
       setEditingContent(selectedTemplate.versions[0].content);
     }
-  }, [selectedTemplate]);
+  }
 
   // AI Clause Analysis
   const aiAnalysis = selectedTemplate ? AIAssistantService.analyzeTemplate(selectedTemplate, editingContent) : null;

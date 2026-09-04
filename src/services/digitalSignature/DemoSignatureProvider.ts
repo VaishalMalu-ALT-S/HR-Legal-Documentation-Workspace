@@ -3,7 +3,7 @@ import { DSCTokenState, DocumentSignature } from '../../types';
 import { CryptoService } from '../cryptoService';
 
 export class DemoSignatureProvider implements SignatureProvider {
-  providerId: 'demo_mode' = 'demo_mode';
+  providerId = 'demo_mode' as const;
   providerName = 'Demo Signature Mode';
 
   async connect(): Promise<DSCTokenState> {

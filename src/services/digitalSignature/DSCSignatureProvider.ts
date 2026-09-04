@@ -3,7 +3,7 @@ import { DSCTokenState, DocumentSignature } from '../../types';
 import { CryptoService } from '../cryptoService';
 
 export class DSCSignatureProvider implements SignatureProvider {
-  providerId: 'dsc_token' = 'dsc_token';
+  providerId = 'dsc_token' as const;
   providerName = 'Enterprise DSC (USB Hardware Token)';
 
   private isConnectedState = false;

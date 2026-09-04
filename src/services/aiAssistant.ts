@@ -46,7 +46,7 @@ export class AIAssistantService {
     }
 
     // Check Variable Placeholders
-    const variablesDetected = (text.match(/\{\{([a-zA-Z0-9_]+)\}\}/g) || []).map(v => v.replace(/[\{\}]/g, ''));
+    const variablesDetected = (text.match(/\{\{([a-zA-Z0-9_]+)\}\}/g) || []).map(v => v.replace(/[{}]/g, ''));
     const missingVariables: string[] = [];
 
     if (!variablesDetected.includes('joining_date') && template.category === 'appointment_letter') {

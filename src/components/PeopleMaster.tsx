@@ -27,7 +27,7 @@ export const PeopleMaster: React.FC<PeopleMasterProps> = ({
   const [showAddModal, setShowAddModal] = useState(false);
 
   // Form State for Adding Employee
-  const [newEmp, setNewEmp] = useState({
+  const [newEmp, setNewEmp] = useState(() => ({
     employeeId: `ALT-${Math.floor(1000 + Math.random() * 9000)}`,
     fullName: '',
     email: '',
@@ -41,7 +41,7 @@ export const PeopleMaster: React.FC<PeopleMasterProps> = ({
     salaryCtc: 1200000,
     panNumber: '',
     address: ''
-  });
+  }));
 
   const filteredEmployees = employees.filter(e => {
     const matchesSearch = e.fullName.toLowerCase().includes(search.toLowerCase()) || 

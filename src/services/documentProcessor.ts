@@ -20,7 +20,7 @@ export class DocumentProcessor {
 
     // Detect {{placeholders}} or words that look like caps variables
     const matches = html.match(/\{\{([a-zA-Z0-9_]+)\}\}/g) || [];
-    const detectedVariables = Array.from(new Set(matches.map(m => m.replace(/[\{\}]/g, ''))));
+    const detectedVariables = Array.from(new Set(matches.map(m => m.replace(/[{}]/g, ''))));
 
     return {
       rawText: result.value.replace(/<[^>]+>/g, ''),

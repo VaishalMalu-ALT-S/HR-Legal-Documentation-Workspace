@@ -19,7 +19,7 @@ const STORAGE_KEYS = {
 };
 
 export class DatabaseService {
-  private static subscribers: Function[] = [];
+  private static subscribers: (() => void)[] = [];
 
   /**
    * Subscribe to store updates
@@ -126,7 +126,7 @@ export class DatabaseService {
       changelog: 'Initial version created.',
       createdBy: template.createdBy,
       createdAt: new Date().toISOString(),
-      variables: (initialContent.match(/\{\{([a-zA-Z0-9_]+)\}\}/g) || []).map(v => v.replace(/[\{\}]/g, ''))
+      variables: (initialContent.match(/\{\{([a-zA-Z0-9_]+)\}\}/g) || []).map(v => v.replace(/[{}]/g, ''))
     };
 
     const newTemplate: DocumentTemplate = {
@@ -162,7 +162,7 @@ export class DatabaseService {
       changelog,
       createdBy: userName,
       createdAt: new Date().toISOString(),
-      variables: (content.match(/\{\{([a-zA-Z0-9_]+)\}\}/g) || []).map(v => v.replace(/[\{\}]/g, ''))
+      variables: (content.match(/\{\{([a-zA-Z0-9_]+)\}\}/g) || []).map(v => v.replace(/[{}]/g, ''))
     };
 
     template.versions.unshift(newVersion);

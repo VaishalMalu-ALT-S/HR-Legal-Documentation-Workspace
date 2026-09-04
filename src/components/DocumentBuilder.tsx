@@ -103,19 +103,22 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
   const dragInfo = useRef<{ id: string; startX: number; startY: number; origX: number; origY: number } | null>(null);
 
   // Sync initialTemplateId prop changes (e.g. from Sidebar clicks)
-  useEffect(() => {
+  const [prevInitTplId, setPrevInitTplId] = useState(initialTemplateId);
+  const [prevSelTplId, setPrevSelTplId] = useState<string | null>(null);
+
+  if (initialTemplateId !== prevInitTplId) {
+    setPrevInitTplId(initialTemplateId);
     if (initialTemplateId) {
       setSelectedTemplateId(initialTemplateId);
     }
-  }, [initialTemplateId]);
+  }
 
   // Load template content when selectedTemplateId changes
-  useEffect(() => {
-    const tpl = COMPANY_TEMPLATES.find(t => t.id === selectedTemplateId) || COMPANY_TEMPLATES[0];
-    setDocumentTitle(tpl.name);
-    
-    // Set initial pages
+  if (selectedTemplateId !== prevSelTplId) {
+    setPrevSelTplId(selectedTemplateId);
+    const tpl = COMPANY_TEMPLATES.find(t => t.id === selectedTemplateId) ?? COMPANY_TEMPLATES[0];
     const initialPages = tpl.pages && tpl.pages.length > 0 ? [...tpl.pages] : [tpl.content];
+    setDocumentTitle(tpl.name);
     setPages(initialPages);
     setActivePageIndex(0);
 
@@ -160,13 +163,13 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
       setVariables({
         recipientName: '[Recipient Name]',
         designation: '[Designation]',
-        refNo: 'ALTS/CORP/2026/001',
-        dateStr: '05-September-2026',
-        salaryOrFee: '[Amount]',
-        traineeId: '[ID]'
+        refNo: 'ALTS/DOC/2026/01',
+        dateStr: '03-July-2026',
+        salaryOrFee: '[Salary / Fee]',
+        traineeId: 'TR001'
       });
     }
-  }, [selectedTemplateId]);
+  }
 
   // Sync editor content into DOM when pages change
   useEffect(() => {
@@ -375,9 +378,10 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
   };
 
   // ── Stamp & Signature Overlay Handlers ──
-  const addStampOverlay = (type: 'signature' | 'stamp' | 'date', src?: string, text?: string) => {
+  const addStampOverlay = useCallback((type: 'signature' | 'stamp' | 'date', src?: string, text?: string) => {
+    const uid = `stamp_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
     const newStamp: StampItem = {
-      id: 'stamp_' + Date.now(),
+      id: uid,
       type,
       pageIndex: activePageIndex,
       src,
@@ -391,7 +395,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
     };
     setStamps(prev => [...prev, newStamp]);
     setSelectedStampId(newStamp.id);
-  };
+  }, [activePageIndex]);
 
   const addOfficialCorporateStamp = () => {
     const stampSvg = getAltSCorporateStamp();
@@ -587,8 +591,10 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
         generatedAt: new Date().toISOString(),
         generatedBy: 'HR Admin',
         approvalWorkflow: {
-          id: 'wf_' + Date.now(),
-          documentId: 'doc_' + Date.now(),
+          // eslint-disable-next-line react-hooks/purity
+          id: `wf_${Date.now()}`,
+          // eslint-disable-next-line react-hooks/purity
+          documentId: `doc_${Date.now()}`,
           currentStepIndex: 0,
           steps: [],
           status: 'in_progress'

@@ -3,7 +3,7 @@ import { DSCTokenState, DocumentSignature } from '../../types';
 import { CryptoService } from '../cryptoService';
 
 export class FutureESignProvider implements SignatureProvider {
-  providerId: 'esign' = 'esign';
+  providerId = 'esign' as const;
   providerName = 'Aadhaar eSign Gateway (Future Ready)';
 
   async connect(): Promise<DSCTokenState> {
