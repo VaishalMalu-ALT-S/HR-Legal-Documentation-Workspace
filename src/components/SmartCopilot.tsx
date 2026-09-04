@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MessageSquare, X, Send, Loader2, Bot, ChevronDown, RefreshCw } from 'lucide-react';
+import { X, Send, Loader2, Bot, RefreshCw } from 'lucide-react';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -9,7 +9,7 @@ interface Message {
 
 interface SmartCopilotProps {
   onClose: () => void;
-  onNavigate: (tab: string, payload?: any) => void;
+  onNavigate: (tab: string, payload?: { documentId?: string; templateId?: string }) => void;
 }
 
 const QUICK_PROMPTS = [
@@ -45,7 +45,7 @@ function getReply(message: string): string {
   return `I can help you with:\n\n- Generating and managing employee or contractor documents\n- Understanding DSC / e-Sign digital signature workflows\n- Configuring approval chains and notifications\n- Navigating the Document Vault and Verification Portal\n- Interpreting the immutable audit trail\n- Bulk document generation and template versioning\n\nWhat would you like to know?`;
 }
 
-export const SmartCopilot: React.FC<SmartCopilotProps> = ({ onClose, onNavigate }) => {
+export const SmartCopilot: React.FC<SmartCopilotProps> = ({ onClose, onNavigate: _onNavigate }) => {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'assistant',

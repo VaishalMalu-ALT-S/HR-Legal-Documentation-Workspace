@@ -99,7 +99,7 @@ export class DSCSignatureProvider implements SignatureProvider {
     };
   }
 
-  async verifySignature(signature: DocumentSignature, documentHash: string): Promise<boolean> {
+  async verifySignature(signature: DocumentSignature, _documentHash: string): Promise<boolean> {
     return signature.status === 'valid' && Boolean(signature.certificateSerial);
   }
 }

@@ -1,16 +1,17 @@
 import React, { useState, useRef, useCallback } from 'react';
 import {
-  Upload, Download, Pen, Move, X, Check,
+  Upload, Download, Pen, Move, X,
   RotateCcw, RotateCw, Crop, Sun, Contrast, Layers,
-  Eraser, FileText, ZoomIn, ZoomOut,
-  Settings, RefreshCw, MoreHorizontal,
+  Eraser, ZoomIn, ZoomOut,
+  Settings, RefreshCw,
   FolderOpen, Maximize2, Calendar, Stamp
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 import * as mammoth from 'mammoth';
 import { getAltSCorporateStamp } from '../utils/stampGenerator';
-import { COMPANY_TEMPLATES, CompanyDocTemplate } from '../data/templates';
+import { COMPANY_TEMPLATES } from '../data/templates';
+import { SmartDocument } from '../types';
 
 /* ─── Types ─────────────────────────────────────────────────────────── */
 interface Sig {
@@ -169,11 +170,12 @@ function CropModal({ src, onCrop, onCancel }: {
 }
 
 /* ─── Logical Document Signing Studio ─────────────────────────────────── */
+/* ─── Logical Document Signing Studio ─────────────────────────────────── */
 interface SignatureCenterProps {
-  documents?: any[];
+  documents?: SmartDocument[];
   currentRole?: string;
   preselectedDocId?: string;
-  onSignatureSuccess?: (doc: any) => void;
+  onSignatureSuccess?: (doc?: unknown) => void;
   selectedTemplate?: string;
 }
 
@@ -187,11 +189,11 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
   const [docName, setDocName] = useState('Offer_Letter_Vrutika_Prajapati.pdf');
   const [currentPage, setCurrentPage] = useState(0);
   const [docLoading, setDocLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [_error, setError] = useState<string | null>(null);
 
   // Signatures state
   const [sigs, setSigs] = useState<Sig[]>([]);
-  const [savedSigs, setSavedSigs] = useState<string[]>(getSaved);
+  const [_savedSigs, setSavedSigs] = useState<string[]>(getSaved);
   const [cropModal, setCropModal] = useState<{ sigId: string; src: string } | null>(null);
   const [bgRemoving, setBgRemoving] = useState<string | null>(null);
   const [activeTool, setActiveTool] = useState<'select' | 'upload' | 'draw' | 'stamp' | 'date'>('select');
@@ -264,8 +266,8 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
         setHasUploadedDoc(true);
       }
       setCurrentPage(0);
-    } catch (err: any) {
-      setError(`Could not process document: ${err.message}`);
+    } catch (err: unknown) {
+      setError(`Could not process document: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setDocLoading(false);
     }

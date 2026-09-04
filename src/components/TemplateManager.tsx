@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { 
-  Layers, Plus, History, Edit3, Eye, Sparkles, CheckCircle, 
-  AlertCircle, FileText, ArrowRight, ShieldCheck, X, RefreshCw
+  History, Edit3, Sparkles, FileText, X
 } from 'lucide-react';
 import { DocumentTemplate, TemplateVersion, UserRole } from '../types';
 import { DatabaseService } from '../services/dbService';
@@ -21,6 +20,9 @@ export const TemplateManager: React.FC<TemplateManagerProps> = ({
   const [selectedTemplate, setSelectedTemplate] = useState<DocumentTemplate>(templates[0] || null);
   const [editingContent, setEditingContent] = useState<string>(() => templates[0]?.versions?.[0]?.content || '');
   const [prevTemplateId, setPrevTemplateId] = useState<string | null>(() => templates[0]?.id || null);
+  const [changelogNote, setChangelogNote] = useState<string>('');
+  const [isEditing, setIsEditing] = useState(false);
+  const [compareVersions, setCompareVersions] = useState<TemplateVersion[] | null>(null);
 
   // Sync editing content when template selection changes
   if (selectedTemplate?.id !== prevTemplateId) {

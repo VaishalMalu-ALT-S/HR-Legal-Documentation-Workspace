@@ -1,8 +1,5 @@
 import React, { useState } from 'react';
-import { 
-  CheckCircle2, Clock, XCircle, MessageSquare, ShieldCheck, 
-  ArrowRight, Filter, Eye, UserCheck, AlertCircle
-} from 'lucide-react';
+import { CheckCircle2, XCircle } from 'lucide-react';
 import { SmartDocument, UserRole } from '../types';
 import { DatabaseService } from '../services/dbService';
 

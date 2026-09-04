@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { History, Search, ShieldCheck, Filter, User, Terminal, Laptop } from 'lucide-react';
+import { Search, ShieldCheck, Filter, User, Laptop } from 'lucide-react';
 import { AuditLog, UserRole } from '../types';
 
 interface AuditLogsProps {
@@ -7,7 +7,7 @@ interface AuditLogsProps {
   currentRole: UserRole;
 }
 
-export const AuditLogs: React.FC<AuditLogsProps> = ({ auditLogs, currentRole }) => {
+export const AuditLogs: React.FC<AuditLogsProps> = ({ auditLogs, currentRole: _currentRole }) => {
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
 

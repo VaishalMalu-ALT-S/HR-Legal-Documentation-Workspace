@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { 
-  Users, UserPlus, Search, Filter, Mail, Phone, Briefcase, 
-  MapPin, Calendar, DollarSign, FileSpreadsheet, Trash2, Edit, Eye, X, Check
+  UserPlus, Search, Filter, 
+  Trash2, Eye, X
 } from 'lucide-react';
 import { Employee, Contractor, UserRole } from '../types';
 import { DatabaseService } from '../services/dbService';
@@ -23,7 +23,7 @@ export const PeopleMaster: React.FC<PeopleMasterProps> = ({
   const [search, setSearch] = useState('');
   const [deptFilter, setDeptFilter] = useState('all');
 
-  const [selectedPerson, setSelectedPerson] = useState<Employee | Contractor | null>(null);
+  const [_selectedPerson, setSelectedPerson] = useState<Employee | Contractor | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
 
   // Form State for Adding Employee

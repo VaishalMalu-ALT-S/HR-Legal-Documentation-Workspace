@@ -14,7 +14,7 @@ export function App() {
   const [currentTab, setCurrentTab] = useState('signature');
   const [selectedTemplate, setSelectedTemplate] = useState('offer_letter');
   const [collapsed, setCollapsed] = useState(false);
-  const [currentRole, setCurrentRole] = useState<UserRole>('super_admin');
+  const [currentRole] = useState<UserRole>('super_admin');
   const [shareModalDocId, setShareModalDocId] = useState<string | null>(null);
 
   // Navigation Payloads
@@ -32,7 +32,7 @@ export function App() {
     return unsubscribe;
   }, []);
 
-  const handleNavigate = (tab: string, payload?: any) => {
+  const handleNavigate = (tab: string, payload?: { documentId?: string; documentNumber?: string; templateId?: string }) => {
     if (payload?.documentId) setSignatureDocId(payload.documentId);
     if (payload?.documentNumber) setVerificationDocNumber(payload.documentNumber);
     setCurrentTab(tab);

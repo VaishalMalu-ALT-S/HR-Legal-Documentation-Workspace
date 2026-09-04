@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import {
-  ChevronDown, ChevronRight, FileText, ChevronLeft,
+  ChevronDown, ChevronRight, ChevronLeft,
   PenTool, LayoutTemplate, ShieldCheck, Archive,
-  FileCheck2, CheckCircle
+  CheckCircle
 } from 'lucide-react';
 
 interface SidebarProps {

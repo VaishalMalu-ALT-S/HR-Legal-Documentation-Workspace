@@ -6,7 +6,7 @@ import {
   INITIAL_EMPLOYEES, INITIAL_CONTRACTORS, 
   INITIAL_TEMPLATES, INITIAL_DOCUMENTS, INITIAL_AUDIT_LOGS 
 } from '../data/seededData';
-import { supabase, isSupabaseConfigured } from './supabaseClient';
+import { supabase as _supabase, isSupabaseConfigured as _isSupabaseConfigured } from './supabaseClient';
 import { CryptoService } from './cryptoService';
 
 const STORAGE_KEYS = {

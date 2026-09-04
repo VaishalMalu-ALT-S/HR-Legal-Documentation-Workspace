@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { 
-  ShieldCheck, ShieldAlert, Search, QrCode, CheckCircle2, 
-  AlertTriangle, Lock, Award, FileText, Key, Calendar
+  ShieldCheck, ShieldAlert, Search, CheckCircle2, 
+  AlertTriangle
 } from 'lucide-react';
 import { SmartDocument } from '../types';
 import { DatabaseService } from '../services/dbService';

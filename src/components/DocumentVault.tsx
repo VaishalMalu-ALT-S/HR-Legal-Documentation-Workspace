@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { 
-  FileCheck, Search, Filter, Download, Share2, ShieldCheck, 
-  Eye, Archive, AlertTriangle, RefreshCw, FileText, CheckCircle2, Lock, X
+  Search, Filter, Download, Share2, 
+  Eye, AlertTriangle, CheckCircle2, X
 } from 'lucide-react';
 import { SmartDocument, UserRole } from '../types';
 import { DatabaseService } from '../services/dbService';
@@ -16,7 +16,7 @@ interface DocumentVaultProps {
 
 export const DocumentVault: React.FC<DocumentVaultProps> = ({
   documents,
-  currentRole,
+  currentRole: _currentRole,
   onNavigateToVerify,
   onOpenShareModal
 }) => {

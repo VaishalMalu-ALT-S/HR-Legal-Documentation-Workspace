@@ -128,7 +128,7 @@ export class AIAssistantService {
   static processCopilotCommand(
     query: string, 
     documents: SmartDocument[]
-  ): { textResponse: string; actionType?: string; actionPayload?: any } {
+  ): { textResponse: string; actionType?: string; actionPayload?: Record<string, string> } {
     const q = query.toLowerCase();
 
     if (q.includes('generate appointment letter') || q.includes('lokesh kumar')) {

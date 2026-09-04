@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import { Upload, FileSpreadsheet, CheckCircle2, ArrowRight, Layers, AlertCircle, RefreshCw, FileText } from 'lucide-react';
+import { Upload, FileSpreadsheet, CheckCircle2, ArrowRight } from 'lucide-react';
 import { DocumentTemplate, UserRole } from '../types';
-import { DatabaseService } from '../services/dbService';
 
 interface BulkGeneratorProps {
   templates: DocumentTemplate[];
@@ -11,7 +10,7 @@ interface BulkGeneratorProps {
 
 export const BulkGenerator: React.FC<BulkGeneratorProps> = ({
   templates,
-  currentRole,
+  currentRole: _currentRole,
   onBulkComplete
 }) => {
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);

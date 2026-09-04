@@ -12,7 +12,7 @@ export class CryptoService {
       const hashArray = Array.from(new Uint8Array(hashBuffer));
       const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
       return hashHex;
-    } catch (err) {
+    } catch {
       // Fallback pseudo-hash for older environments
       return this.fallbackHash(content);
     }

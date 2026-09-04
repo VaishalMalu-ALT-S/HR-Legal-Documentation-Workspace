@@ -2,18 +2,17 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   Bold, Italic, Underline, Strikethrough, AlignLeft, AlignCenter,
   AlignRight, AlignJustify, List, ListOrdered, Indent, Outdent,
-  Type, Palette, Highlighter, Table, Calendar, RotateCcw,
+  Palette, Highlighter, Table, Calendar, RotateCcw,
   RotateCw, Download, Printer, Save, FileText, Check, Plus,
-  Minus, Sparkles, Trash2, X, Move, Stamp as StampIcon, PenTool,
-  Sliders, Eye, EyeOff, LayoutTemplate, Layers, ChevronDown,
-  ChevronUp, Copy, ArrowDown, ArrowUp, AlertCircle, RefreshCw,
-  SlidersHorizontal, Edit3
+  Minus, Sparkles, Trash2, X, Stamp as StampIcon, PenTool,
+  LayoutTemplate, ArrowDown, ArrowUp
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
-import { COMPANY_TEMPLATES, CompanyDocTemplate } from '../data/templates';
+import { COMPANY_TEMPLATES } from '../data/templates';
 import { getAltSCorporateStamp } from '../utils/stampGenerator';
 import { DatabaseService } from '../services/dbService';
+import { DocumentCategory } from '../types';
 
 interface StampItem {
   id: string;
@@ -58,7 +57,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
   // Letterhead options
   const [showHeadpad, setShowHeadpad] = useState<boolean>(true);
   const [showFooter, setShowFooter] = useState<boolean>(true);
-  const [headpadOnAllPages, setHeadpadOnAllPages] = useState<boolean>(false);
+  const [headpadOnAllPages, _setHeadpadOnAllPages] = useState<boolean>(false);
 
   // Formatting state
   const [fontFamily, setFontFamily] = useState<string>("'Calibri', Arial, sans-serif");
@@ -506,7 +505,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
   };
 
   // Resize / Rotate Stamp
-  const updateSelectedStamp = (prop: keyof StampItem, value: any) => {
+  const updateSelectedStamp = (prop: keyof StampItem, value: number | string | undefined) => {
     if (!selectedStampId) return;
     setStamps(prev => prev.map(s => s.id === selectedStampId ? { ...s, [prop]: value } : s));
   };
@@ -573,9 +572,9 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
   const handleSaveToVault = async () => {
     try {
       const fullHtml = pages.join('\n<!-- page-break -->\n');
-      const doc = await DatabaseService.createDocument({
+      await DatabaseService.createDocument({
         title: documentTitle,
-        category: (selectedTemplateId === 'asset_acknowledgment' ? 'acknowledgement_form' : 'appointment_letter') as any,
+        category: (selectedTemplateId === 'asset_acknowledgment' ? 'acknowledgement_form' : 'appointment_letter') as DocumentCategory,
         personName: variables.recipientName || 'Employee / Consultant',
         personEmail: 'hr@alt-s.com',
         personRole: variables.designation || 'Candidate',

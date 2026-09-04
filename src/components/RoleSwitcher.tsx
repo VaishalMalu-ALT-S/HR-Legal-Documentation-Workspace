@@ -7,7 +7,7 @@ interface RoleSwitcherProps {
   onRoleChange: (role: UserRole) => void;
 }
 
-const roles: { role: UserRole; label: string; desc: string; icon: any; color: string }[] = [
+const roles: { role: UserRole; label: string; desc: string; icon: React.ComponentType<{ size?: number; className?: string }>; color: string }[] = [
   { role: 'super_admin', label: 'Super Admin',           desc: 'Full access — users, settings, all modules',  icon: Shield,    color: 'text-violet-600' },
   { role: 'hr_admin',    label: 'HR Admin',              desc: 'People management, templates, document gen',  icon: UserCheck, color: 'text-sky-600'    },
   { role: 'signatory',   label: 'Authorized Signatory',  desc: 'DSC hardware signing & approvals',            icon: Key,       color: 'text-amber-600'  },

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Share2, Lock, Copy, Check, Clock, X } from 'lucide-react';
+import { Share2, Copy, Check, X } from 'lucide-react';
 import { DatabaseService } from '../services/dbService';
 
 interface SecureSharingModalProps {

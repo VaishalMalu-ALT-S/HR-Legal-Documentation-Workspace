@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import {
-  Search, Plus, HelpCircle
+  Search, Plus
 } from 'lucide-react';
 
 interface HeaderProps {
   onOpenCreate?: () => void;
   activeTab?: string;
-  onNavigate?: (tab: string, payload?: any) => void;
+  onNavigate?: (tab: string, payload?: { documentId?: string; documentNumber?: string; templateId?: string; search?: string }) => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({

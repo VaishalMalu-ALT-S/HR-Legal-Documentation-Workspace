@@ -2,6 +2,7 @@ import mammoth from 'mammoth';
 import QRCode from 'qrcode';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { DocumentSignature } from '../types';
 
 export interface GeneratedDocumentResult {
   htmlContent: string;
@@ -68,7 +69,7 @@ export class DocumentProcessor {
     title: string,
     interpolatedContent: string,
     values: Record<string, string>,
-    signatures: any[] = [],
+    signatures: DocumentSignature[] = [],
     documentNumber: string = 'DOC-2026-000124',
     qrDataUrl: string = ''
   ): string {

@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import { 
-  Check, ArrowRight, ArrowLeft, Search, Sparkles, FileText, 
-  Download, ShieldCheck, CheckCircle2, User, Building, QrCode
+  Check, ArrowRight, ArrowLeft, Download, CheckCircle2
 } from 'lucide-react';
-import { Employee, Contractor, DocumentTemplate, SmartDocument, UserRole } from '../types';
+import { Employee, Contractor, DocumentTemplate, SmartDocument, UserRole, DocumentCategory } from '../types';
 import { DatabaseService } from '../services/dbService';
 import { DocumentProcessor } from '../services/documentProcessor';
 import { AIAssistantService } from '../services/aiAssistant';
@@ -24,7 +23,7 @@ export const DocumentWizard: React.FC<DocumentWizardProps> = ({
   templates,
   initialEmployeeId,
   initialTemplateId,
-  currentRole,
+  currentRole: _currentRole,
   onComplete
 }) => {
   const [currentStep, setCurrentStep] = useState(1);
@@ -132,7 +131,7 @@ export const DocumentWizard: React.FC<DocumentWizardProps> = ({
 
     const newDoc = await DatabaseService.createDocument({
       title: `${selectedTemplate.name} — ${personName}`,
-      category: selectedCategory as any,
+      category: selectedCategory as DocumentCategory,
       employeeId: isEmp ? selectedPerson.id : undefined,
       contractorId: !isEmp ? selectedPerson?.id : undefined,
       personName,

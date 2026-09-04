@@ -1,35 +1,22 @@
 import React from 'react';
 import {
-  FileText, Clock, CheckCircle2, AlertTriangle, FileCheck,
-  TrendingUp, ShieldCheck, ArrowRight, Activity, PlusCircle, PenTool, Layers,
-  BarChart3, Calendar
+  FileText, Clock, CheckCircle2, AlertTriangle,
+  ShieldCheck, ArrowRight, PlusCircle, PenTool, Layers
 } from 'lucide-react';
 import { SmartDocument, AuditLog, UserRole } from '../types';
 
 interface DashboardProps {
   documents: SmartDocument[];
   auditLogs: AuditLog[];
-  onNavigate: (tab: string, payload?: any) => void;
+  onNavigate: (tab: string, payload?: { documentId?: string; templateId?: string }) => void;
   currentRole: UserRole;
 }
-
-const STATUS_COLORS: Record<string, string> = {
-  draft: 'badge-slate',
-  generated: 'badge-blue',
-  under_review: 'badge-amber',
-  approved: 'badge-green',
-  pending_signature: 'badge-amber',
-  signed: 'badge-green',
-  rejected: 'badge-rose',
-  expired: 'badge-rose',
-  archived: 'badge-slate',
-};
 
 function KPICard({
   label, value, sub, icon: Icon, accent, onClick
 }: {
   label: string; value: string | number; sub?: string;
-  icon: any; accent: string; onClick?: () => void;
+  icon: React.ComponentType<{ size?: number; className?: string }>; accent: string; onClick?: () => void;
 }) {
   return (
     <button
