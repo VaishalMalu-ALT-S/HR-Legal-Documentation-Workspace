@@ -1,0 +1,96 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --brand-50: 240 249 255;
+    --brand-100: 224 242 254;
+    --brand-500: 14 165 233;
+    --brand-600: 2 132 199;
+    --brand-700: 3 105 161;
+  }
+
+  body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    color: #0f172a;
+    background-color: #f8fafc;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4, .font-heading {
+    font-family: 'Outfit', 'Inter', system-ui, sans-serif;
+  }
+
+  code, .font-mono, pre {
+    font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+  }
+}
+
+/* Premium Scrollbars */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: #f1f5f9; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+/* Fade In Animation */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in { animation: fadeIn 0.22s ease-out forwards; }
+
+/* Slide Right Animation for Copilot */
+@keyframes slideRight {
+  from { opacity: 0; transform: translateX(20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.animate-slide-right { animation: slideRight 0.25s ease-out forwards; }
+
+/* Pulse Glow for Active States */
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 0 3px rgba(14,165,233,0.12); }
+  50%       { box-shadow: 0 0 0 6px rgba(14,165,233,0.20); }
+}
+.pulse-glow { animation: pulseGlow 2.4s ease-in-out infinite; }
+
+/* Document Paper for Preview */
+.document-paper {
+  background: #ffffff;
+  box-shadow:
+    0 1px 3px rgba(0,0,0,0.06),
+    0 12px 32px -8px rgba(0,0,0,0.10);
+  min-height: 1056px;
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 48px 60px;
+  position: relative;
+  border: 1px solid #e2e8f0;
+}
+
+/* Status Badge System */
+.badge { @apply inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-bold tracking-wide uppercase; }
+.badge-green  { @apply bg-emerald-50 text-emerald-700 border border-emerald-200; }
+.badge-amber  { @apply bg-amber-50  text-amber-700  border border-amber-200;  }
+.badge-blue   { @apply bg-sky-50    text-sky-700    border border-sky-200;    }
+.badge-rose   { @apply bg-rose-50   text-rose-700   border border-rose-200;   }
+.badge-slate  { @apply bg-slate-100 text-slate-600  border border-slate-200;  }
+
+/* Card Base */
+.card { @apply bg-white rounded-xl border border-slate-200 shadow-sm; }
+
+/* Print Styles */
+@media print {
+  body { background: white; }
+  .no-print { display: none !important; }
+  .document-paper { box-shadow: none; border: none; padding: 0; margin: 0; max-width: 100%; }
+}
+
+
+/* Editor Content Styles */
+.editor-content p { margin-bottom: 1em; }
+.editor-content h1, .editor-content h2, .editor-content h3 { font-family: 'Outfit', sans-serif; font-weight: 700; margin-top: 1.5em; margin-bottom: 0.5em; }
+.editor-content h1 { font-size: 2em; }
+.editor-content h2 { font-size: 1.5em; }
