@@ -21,6 +21,15 @@ const STORAGE_KEYS = {
 export class DatabaseService {
   private static subscribers: (() => void)[] = [];
 
+  static setSessionRole(role: UserRole) {
+    localStorage.setItem('secure_session_role', role);
+    this.notifySubscribers();
+  }
+
+  static getSessionRole(): UserRole {
+    return (localStorage.getItem('secure_session_role') as UserRole) || 'hr';
+  }
+
   /**
    * Subscribe to store updates
    */
@@ -54,7 +63,7 @@ export class DatabaseService {
     };
     employees.unshift(newEmp);
     localStorage.setItem(STORAGE_KEYS.EMPLOYEES, JSON.stringify(employees));
-    this.logAuditAction('Super Admin', 'super_admin', 'Added Employee', `Created employee profile for ${newEmp.fullName} (${newEmp.employeeId})`);
+    this.logAuditAction('Super Admin', 'uma_mageshwari', 'Added Employee', `Created employee profile for ${newEmp.fullName} (${newEmp.employeeId})`);
     this.notifySubscribers();
     return newEmp;
   }
@@ -76,7 +85,7 @@ export class DatabaseService {
     employees = employees.filter(e => e.id !== id);
     localStorage.setItem(STORAGE_KEYS.EMPLOYEES, JSON.stringify(employees));
     if (emp) {
-      this.logAuditAction('HR Admin', 'hr_admin', 'Deleted Employee', `Removed employee profile ${emp.fullName} (${emp.employeeId})`);
+      this.logAuditAction('HR Admin', 'hr', 'Deleted Employee', `Removed employee profile ${emp.fullName} (${emp.employeeId})`);
     }
     this.notifySubscribers();
   }
@@ -100,7 +109,7 @@ export class DatabaseService {
     };
     contractors.unshift(newCon);
     localStorage.setItem(STORAGE_KEYS.CONTRACTORS, JSON.stringify(contractors));
-    this.logAuditAction('HR Admin', 'hr_admin', 'Added Contractor', `Created contractor profile for ${newCon.fullName} (${newCon.contractorId})`);
+    this.logAuditAction('HR Admin', 'hr', 'Added Contractor', `Created contractor profile for ${newCon.fullName} (${newCon.contractorId})`);
     this.notifySubscribers();
     return newCon;
   }
@@ -140,7 +149,7 @@ export class DatabaseService {
 
     templates.unshift(newTemplate);
     localStorage.setItem(STORAGE_KEYS.TEMPLATES, JSON.stringify(templates));
-    this.logAuditAction(template.createdBy, 'super_admin', 'Created Document Template', `Created template ${template.name}`);
+    this.logAuditAction(template.createdBy, 'uma_mageshwari', 'Created Document Template', `Created template ${template.name}`);
     this.notifySubscribers();
     return newTemplate;
   }
@@ -171,7 +180,7 @@ export class DatabaseService {
 
     templates[index] = template;
     localStorage.setItem(STORAGE_KEYS.TEMPLATES, JSON.stringify(templates));
-    this.logAuditAction(userName, 'hr_admin', 'Updated Template Version', `Created template version ${newVerNum} for ${template.name}`);
+    this.logAuditAction(userName, 'hr', 'Updated Template Version', `Created template version ${newVerNum} for ${template.name}`);
     this.notifySubscribers();
     return template;
   }
@@ -179,11 +188,29 @@ export class DatabaseService {
   // --- DOCUMENTS ---
   static getDocuments(): SmartDocument[] {
     const data = localStorage.getItem(STORAGE_KEYS.DOCUMENTS);
+    let docs: SmartDocument[] = [];
     if (!data) {
       localStorage.setItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(INITIAL_DOCUMENTS));
-      return INITIAL_DOCUMENTS;
+      docs = INITIAL_DOCUMENTS;
+    } else {
+      docs = JSON.parse(data);
     }
-    return JSON.parse(data);
+
+    const sessionRole = this.getSessionRole();
+    return docs.filter(doc => {
+      if (sessionRole === 'hr') {
+        return true; // HR can see all their documents
+      }
+      if (sessionRole === 'siva_kumar') {
+        const requiresSiva = doc.approvalWorkflow?.steps.some(s => s.roleName.toLowerCase().includes('siva_kumar'));
+        return requiresSiva || doc.status === 'completed' || doc.status === 'signed' || doc.status === 'signature_authorized';
+      }
+      if (sessionRole === 'uma_mageshwari') {
+        const requiresUma = doc.approvalWorkflow?.steps.some(s => s.roleName.toLowerCase().includes('uma_mageshwari'));
+        return requiresUma || doc.status === 'completed' || doc.status === 'signed' || doc.status === 'signature_authorized';
+      }
+      return false;
+    });
   }
 
   static getDocumentById(id: string): SmartDocument | undefined {
@@ -192,6 +219,10 @@ export class DatabaseService {
   }
 
   static async createDocument(docData: Omit<SmartDocument, 'id' | 'documentNumber' | 'documentHash' | 'originalHash' | 'isTampered' | 'qrVerificationCode' | 'verificationUrl' | 'createdAt' | 'updatedAt' | 'signatures'>): Promise<SmartDocument> {
+    const sessionRole = this.getSessionRole();
+    if (sessionRole !== 'hr') {
+      throw new Error("403 Forbidden: Only HR can create documents.");
+    }
     const documents = this.getDocuments();
     const docNumber = `DOC-2026-${String(documents.length + 125).padStart(6, '0')}`;
     
@@ -217,7 +248,7 @@ export class DatabaseService {
     localStorage.setItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(documents));
     this.logAuditAction(
       docData.generatedBy, 
-      'hr_admin', 
+      'hr', 
       'Document Generated', 
       `Generated ${docData.title} (${docNumber}) with SHA-256 hash ${hash.substring(0, 12)}...`,
       newDoc.id,
@@ -235,11 +266,15 @@ export class DatabaseService {
     userName: string,
     userRole: UserRole
   ): Promise<SmartDocument> {
+    const sessionRole = this.getSessionRole();
     const documents = this.getDocuments();
     const index = documents.findIndex(d => d.id === documentId);
     if (index === -1) throw new Error('Document not found');
 
     const doc = documents[index];
+    if (doc.status !== 'approved' && doc.status !== 'signed' && doc.status !== 'completed' && doc.status !== 'signature_authorized') {
+      throw new Error("403 Forbidden: Document must be approved before signing.");
+    }
     doc.signatures.push(signature);
     const prevStatus = doc.status;
     doc.status = 'signed';
@@ -249,7 +284,7 @@ export class DatabaseService {
     // Mark current workflow step as approved
     if (doc.approvalWorkflow && doc.approvalWorkflow.steps) {
       doc.approvalWorkflow.steps.forEach(step => {
-        if (step.roleName.toLowerCase().includes('signatory') || step.roleName.toLowerCase().includes('employee')) {
+        if (step.roleName.toLowerCase().includes('siva_kumar') || step.roleName.toLowerCase().includes('employee_archived')) {
           step.status = 'approved';
           step.comment = `Signed electronically via ${signature.method.toUpperCase()}.`;
           step.updatedAt = new Date().toISOString();
@@ -274,14 +309,131 @@ export class DatabaseService {
     return doc;
   }
 
+  
+  static authorizeDocumentSignatory(
+    documentId: string,
+    signatoryRole: string, // 'siva_kumar' | 'uma_mageshwari'
+    signatoryEmail: string,
+    method: 'otp' = 'otp'
+  ): import('../types').SmartDocument {
+    const documents = this.getDocuments();
+    const index = documents.findIndex(d => d.id === documentId);
+    if (index === -1) throw new Error('Document not found');
+    
+    const doc = documents[index];
+    if (!doc.authorizations) {
+      doc.authorizations = [];
+    }
+    
+    const signatoryName = signatoryRole === 'siva_kumar' ? 'Siva Kumar' : 'Uma Mageshwari';
+    
+    const newAuth = {
+      id: `auth-${Date.now()}`,
+      documentId,
+      signatoryRole,
+      signatoryName,
+      signatoryEmail,
+      method,
+      authorizedAt: new Date().toISOString()
+    };
+    
+    doc.authorizations.push(newAuth as any);
+    
+    // Update step status to approved for the workflow
+    if (doc.approvalWorkflow && doc.approvalWorkflow.steps) {
+      const stepIndex = doc.approvalWorkflow.steps.findIndex(s => s.roleName === signatoryRole);
+      if (stepIndex !== -1) {
+        doc.approvalWorkflow.steps[stepIndex].status = 'approved';
+        doc.approvalWorkflow.steps[stepIndex].updatedAt = new Date().toISOString();
+        doc.approvalWorkflow.currentStepIndex = Math.min(doc.approvalWorkflow.steps.length, stepIndex + 1);
+      }
+      
+      const allApproved = doc.approvalWorkflow.steps.every(s => s.status === 'approved');
+      if (allApproved) {
+        doc.status = 'signature_authorized';
+        doc.approvalWorkflow.status = 'approved';
+      }
+    }
+    
+    documents[index] = doc;
+    localStorage.setItem('doc-signing-documents', JSON.stringify(documents));
+    
+    this.logAuditAction(
+      'System',
+      'hr' as any,
+      'Approval Verified',
+      `OTP verified for ${signatoryName} (${signatoryEmail}). Signature unlocked.`,
+      doc.id,
+      doc.documentNumber,
+      doc.status,
+      doc.status
+    );
+    
+    this.notifySubscribers();
+    return doc;
+  }
+
+  static recordSignaturePlacement(
+    documentId: string,
+    signatoryRole: string,
+    hrUserName: string
+  ): import('../types').SmartDocument {
+    const documents = this.getDocuments();
+    const index = documents.findIndex(d => d.id === documentId);
+    if (index === -1) throw new Error('Document not found');
+    
+    const doc = documents[index];
+    if (!doc.authorizations) return doc;
+    
+    const authIndex = doc.authorizations.findIndex(a => a.signatoryRole === signatoryRole && !a.usedAt);
+    if (authIndex !== -1) {
+      doc.authorizations[authIndex].usedAt = new Date().toISOString();
+      doc.authorizations[authIndex].usedByRole = 'hr';
+      
+      const signatoryName = signatoryRole === 'siva_kumar' ? 'Siva Kumar' : 'Uma Mageshwari';
+      
+      // If all required signatures are placed, update status to signed
+      const allRequired = doc.approvalWorkflow?.steps.map(s => s.roleName) || [];
+      const allPlaced = allRequired.every(role => 
+        doc.authorizations?.some(a => a.signatoryRole === role && a.usedAt)
+      );
+      
+      if (allPlaced) {
+        doc.status = 'signed';
+      }
+      
+      documents[index] = doc;
+      localStorage.setItem('doc-signing-documents', JSON.stringify(documents));
+      
+      this.logAuditAction(
+        hrUserName,
+        'hr',
+        'Signature Placed',
+        `${signatoryName}'s authorized signature was placed by HR.`,
+        doc.id,
+        doc.documentNumber,
+        doc.status,
+        doc.status
+      );
+      
+      this.notifySubscribers();
+    }
+    return doc;
+  }
+
+
   static updateApprovalStatus(
     documentId: string,
     stepNumber: number,
-    status: 'approved' | 'rejected' | 'changes_requested',
+    status: 'approved' | 'correction_required' | 'changes_requested',
     comment: string,
     userName: string,
     userRole: UserRole
   ): SmartDocument {
+    const sessionRole = this.getSessionRole();
+    if (sessionRole === 'hr') {
+      throw new Error("403 Forbidden: HR cannot approve documents.");
+    }
     const documents = this.getDocuments();
     const index = documents.findIndex(d => d.id === documentId);
     if (index === -1) throw new Error('Document not found');
@@ -298,13 +450,13 @@ export class DatabaseService {
       if (status === 'approved') {
         doc.approvalWorkflow.currentStepIndex = Math.min(doc.approvalWorkflow.steps.length, stepNumber + 1);
         if (stepNumber === doc.approvalWorkflow.steps.length - 1) {
-          doc.status = 'pending_signature';
+          doc.status = 'signature_authorized';
         } else {
-          doc.status = 'under_review';
+          doc.status = 'pending_approval';
         }
-      } else if (status === 'rejected') {
-        doc.status = 'rejected';
-        doc.approvalWorkflow.status = 'rejected';
+      } else if (status === 'correction_required') {
+        doc.status = 'correction_required';
+        doc.approvalWorkflow.status = 'correction_required';
       }
     }
 
@@ -338,7 +490,7 @@ export class DatabaseService {
 
     documents[index] = doc;
     localStorage.setItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(documents));
-    this.logAuditAction('System Security Audit', 'auditor', ' TAMPER DETECTED', `Document hash mismatch simulated for ${doc.documentNumber}`);
+    this.logAuditAction('System Security Audit', 'hr', ' TAMPER DETECTED', `Document hash mismatch simulated for ${doc.documentNumber}`);
     this.notifySubscribers();
     return doc;
   }
@@ -355,7 +507,7 @@ export class DatabaseService {
 
     documents[index] = doc;
     localStorage.setItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(documents));
-    this.logAuditAction('System Security Audit', 'auditor', 'Integrity Restored', `Restored original SHA-256 hash for ${doc.documentNumber}`);
+    this.logAuditAction('System Security Audit', 'hr', 'Integrity Restored', `Restored original SHA-256 hash for ${doc.documentNumber}`);
     this.notifySubscribers();
     return doc;
   }
@@ -419,7 +571,7 @@ export class DatabaseService {
 
     links.unshift(newLink);
     localStorage.setItem(STORAGE_KEYS.SHARED_LINKS, JSON.stringify(links));
-    this.logAuditAction('HR Admin', 'hr_admin', 'Created Secure Link', `Generated secure share link for document ID ${documentId}`);
+    this.logAuditAction('HR Admin', 'hr', 'Created Secure Link', `Generated secure share link for document ID ${documentId}`);
     return newLink;
   }
 }

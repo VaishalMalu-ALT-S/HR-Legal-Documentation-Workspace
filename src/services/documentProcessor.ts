@@ -74,7 +74,11 @@ export class DocumentProcessor {
     qrDataUrl: string = ''
   ): string {
     const isSifra = interpolatedContent.includes('SIFRA') || values.company_name?.includes('SIFRA');
-    const companyName = isSifra ? 'SIFRA Tech Solutions India Private Limited' : 'ALT-S Technology Private Limited';
+    const companyName = isSifra ? 'Sifratech Solutions' : 'ALT-S TECHNOLOGY PRIVATE LIMITED';
+    const logoUrl = isSifra ? '/Sifratech.png' : '/altslogo.png';
+    const companyAddress = isSifra 
+      ? 'Sifratech Tech Park, Bangalore, India'
+      : 'No. 4, Mullai Street, Thiruvalluvar Nagar,\nKamarajnagar, Poonamallee, Tiruvallur,\nTamil Nadu - 600071, INDIA';
 
     // Annexure I Compensation Table renderer if placeholders exist
     let formattedContent = interpolatedContent;
@@ -159,21 +163,25 @@ export class DocumentProcessor {
     return `
     <div id="pdf-document-paper" class="document-paper" style="background: #ffffff; color: #0f172a; font-family: 'Inter', sans-serif; padding: 40px; box-sizing: border-box;">
       
-      <!-- Letterhead Header -->
-      <div style="display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 16px; border-bottom: 3px solid #0284c7; margin-bottom: 24px;">
-        <div style="display: flex; align-items: center; gap: 12px;">
-          <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #0284c7, #0369a1); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: white; font-weight: 900; font-size: 22px;">
-            alt:s
+      <!-- Letterhead Header (Synced from DocumentBuilder) -->
+      <div style="margin-bottom: 32px; width: 100%; display: flex; align-items: flex-end;">
+        <!-- Left: Company Logo -->
+        <img
+          src="${logoUrl}"
+          alt="${companyName}"
+          style="max-height: 85px; max-width: 260px; object-fit: contain; flex-shrink: 0; object-position: left bottom; margin-bottom: -4px; mix-blend-mode: multiply;"
+        />
+
+        <!-- Right: Gray Bar with Text Anchored on Top -->
+        <div style="flex: 1; height: 18px; background-color: #0a3161; border-top-left-radius: 8px; border-bottom-left-radius: 8px; margin-left: 4px; position: relative;">
+          <div style="position: absolute; right: 0; bottom: 100%; font-size: 10.5px; line-height: 1.4; color: #1e293b; text-align: left; font-family: sans-serif; border-left: 2px solid #0a3161; padding-left: 12px; padding-bottom: 4px; width: max-content; padding-right: 4px;">
+            <p style="font-weight: bold; font-size: 11px; text-transform: uppercase; color: #0f172a; border-bottom: 1.5px solid #0a3161; padding-bottom: 3px; margin-bottom: 3px; margin-top: 0;">
+              ${companyName}
+            </p>
+            <div style="white-space: pre-line; color: #1e293b;">
+              ${companyAddress}
+            </div>
           </div>
-          <div>
-            <h2 style="font-size: 16px; font-weight: 800; color: #0f172a; margin: 0; letter-spacing: -0.02em;">${companyName}</h2>
-            <p style="font-size: 10px; color: #64748b; margin: 2px 0 0 0;">No. 4, Mullai Street, Thiruvalluvar Nagar, Kamaraj Nagar, Poonamallee, Tiruvallur, TN - 600071</p>
-          </div>
-        </div>
-        <div style="text-align: right; font-size: 10px; color: #64748b;">
-          <p style="margin: 0;">CIN: U62099TN2023PTC163053</p>
-          <p style="margin: 2px 0 0 0;">GSTIN: 33AAZCA2708F1ZN</p>
-          <p style="margin: 2px 0 0 0; font-weight: 600; color: #0284c7;">Ref: ${documentNumber}</p>
         </div>
       </div>
 

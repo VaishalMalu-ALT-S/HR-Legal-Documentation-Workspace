@@ -11,6 +11,20 @@ export interface CompanyDocTemplate {
 
 export const COMPANY_TEMPLATES: CompanyDocTemplate[] = [
   {
+    id: 'blank_document',
+    name: 'Untitled Document',
+    category: 'Blank',
+    description: 'A completely blank template with only the dynamic company header and footer. Start typing anything.',
+    sourceDoc: 'Blank Template',
+    pages: [
+      `<h2 class="text-center text-base font-bold underline my-3 text-slate-900 tracking-wide">Untitled Document</h2>
+<div class="my-3 text-xs text-slate-800 min-h-[300px]">
+  <p>[Start typing your custom content here...]</p>
+</div>`
+    ],
+    content: ''
+  },
+  {
     id: 'asset_acknowledgment',
     name: 'Asset Acknowledgment Letter',
     category: 'Asset',
@@ -378,42 +392,7 @@ export const COMPANY_TEMPLATES: CompanyDocTemplate[] = [
     description: 'Clean official ALT-S letterhead ready for custom HR letters and notices',
     sourceDoc: 'Official ALT-S Headpad',
     pages: [
-      `<div class="flex justify-between items-center my-2 text-xs text-slate-700">
-  <span><strong>Date:</strong> 05-September-2026</span>
-  <span class="text-slate-500"><strong>Ref No:</strong> ALTS/CORP/2026/001</span>
-</div>
-
-<div class="my-3 text-xs text-slate-800 space-y-1">
-  <p><strong>To,</strong></p>
-  <p>[Recipient Name / Designation]</p>
-  <p>[Company Name / Department]</p>
-  <p>[Address Line]</p>
-</div>
-
-<p class="my-2 text-xs font-bold text-slate-900"><strong>Subject:</strong> [Enter Document Subject Here]</p>
-
-<p class="my-2 text-xs text-slate-800">Dear [Salutation / Name],</p>
-
-<p class="my-2 text-xs text-slate-700 leading-relaxed">
-  Type your customized document content here. You can adjust the font size, font family, style with Bold/Italic/Underline, add bullet lists, tables, and drag &amp; drop signatures or the official corporate seal stamp onto this letterhead.
-</p>
-
-<p class="my-2 text-xs text-slate-700 leading-relaxed">
-  If you have additional clauses, notices, or schedules that require more space, you can seamlessly type continuously or click <strong>+ Add New Page</strong> to extend this document into multi-page A4 format.
-</p>
-
-<div class="mt-8 pt-4 border-t border-slate-200 flex justify-between items-end">
-  <div class="text-xs text-slate-700 space-y-2">
-    <p>Yours faithfully,</p>
-    <p class="font-bold text-slate-900">For ALT-S Technology Private Limited</p>
-    <p class="pt-4 text-slate-500">Authorized Signatory</p>
-  </div>
-  <div class="text-right text-xs text-slate-700 space-y-2">
-    <p>Acknowledged &amp; Accepted by:</p>
-    <p class="pt-6">_________________________________</p>
-    <p class="text-slate-500">[Employee / Consultant Name]</p>
-  </div>
-</div>`
+      `<div style="min-height: 400px;"></div>`
     ],
     get content() { return this.pages.join('\n<hr class="my-6 border-dashed border-slate-300"/>\n'); }
   }

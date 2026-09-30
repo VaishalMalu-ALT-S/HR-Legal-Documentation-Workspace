@@ -3,16 +3,23 @@ import {
   Search, Plus
 } from 'lucide-react';
 
+import { RoleSwitcher } from './RoleSwitcher';
+import { UserRole } from '../types';
+
 interface HeaderProps {
   onOpenCreate?: () => void;
   activeTab?: string;
   onNavigate?: (tab: string, payload?: { documentId?: string; documentNumber?: string; templateId?: string; search?: string }) => void;
+  currentRole: UserRole;
+  onRoleChange: (role: UserRole) => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   onOpenCreate,
   activeTab = 'signature',
   onNavigate,
+  currentRole,
+  onRoleChange
 }) => {
   const [searchValue, setSearchValue] = useState('');
   const [showAppSwitcher, setShowAppSwitcher] = useState(false);
@@ -72,26 +79,6 @@ export const Header: React.FC<HeaderProps> = ({
                     <div className="text-[10px] text-slate-500">Multi-page A4 templates</div>
                   </div>
                 </button>
-                <button
-                  onClick={() => { onNavigate?.('vault'); setShowAppSwitcher(false); }}
-                  className="w-full text-left p-2 rounded-lg hover:bg-indigo-50 hover:text-indigo-700 flex items-center gap-2.5 transition-colors"
-                >
-                  <div className="w-6 h-6 rounded bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-[10px]">🗄</div>
-                  <div>
-                    <div className="font-bold text-slate-800">Document Vault</div>
-                    <div className="text-[10px] text-slate-500">Tamper-proof ledger</div>
-                  </div>
-                </button>
-                <button
-                  onClick={() => { onNavigate?.('verification'); setShowAppSwitcher(false); }}
-                  className="w-full text-left p-2 rounded-lg hover:bg-indigo-50 hover:text-indigo-700 flex items-center gap-2.5 transition-colors"
-                >
-                  <div className="w-6 h-6 rounded bg-purple-100 text-purple-700 flex items-center justify-center font-bold text-[10px]">🛡</div>
-                  <div>
-                    <div className="font-bold text-slate-800">Verification Portal</div>
-                    <div className="text-[10px] text-slate-500">SHA-256 hash checks</div>
-                  </div>
-                </button>
               </div>
             </div>
           )}
@@ -131,47 +118,23 @@ export const Header: React.FC<HeaderProps> = ({
             )}
           </button>
 
-          <button
-            onClick={() => onNavigate && onNavigate('builder')}
-            className={`relative px-3 py-1.5 rounded font-medium transition-colors ${
-              activeTab === 'builder'
-                ? 'text-[#0052cc] font-semibold'
-                : 'text-[#42526e] hover:bg-[#ebecf0]'
-            }`}
-          >
-            Letterhead Editor
-            {activeTab === 'builder' && (
-              <span className="absolute bottom-[-9px] left-3 right-3 h-[3px] bg-[#0052cc] rounded-full" />
-            )}
-          </button>
+          {currentRole === 'hr' && (
+            <button
+              onClick={() => onNavigate && onNavigate('builder')}
+              className={`relative px-3 py-1.5 rounded font-medium transition-colors ${
+                activeTab === 'builder'
+                  ? 'text-[#0052cc] font-semibold'
+                  : 'text-[#42526e] hover:bg-[#ebecf0]'
+              }`}
+            >
+              Letterhead Editor
+              {activeTab === 'builder' && (
+                <span className="absolute bottom-[-9px] left-3 right-3 h-[3px] bg-[#0052cc] rounded-full" />
+              )}
+            </button>
+          )}
 
-          <button
-            onClick={() => onNavigate && onNavigate('vault')}
-            className={`relative px-3 py-1.5 rounded font-medium transition-colors ${
-              activeTab === 'vault'
-                ? 'text-[#0052cc] font-semibold'
-                : 'text-[#42526e] hover:bg-[#ebecf0]'
-            }`}
-          >
-            Document Vault
-            {activeTab === 'vault' && (
-              <span className="absolute bottom-[-9px] left-3 right-3 h-[3px] bg-[#0052cc] rounded-full" />
-            )}
-          </button>
 
-          <button
-            onClick={() => onNavigate && onNavigate('verification')}
-            className={`relative px-3 py-1.5 rounded font-medium transition-colors ${
-              activeTab === 'verification'
-                ? 'text-[#0052cc] font-semibold'
-                : 'text-[#42526e] hover:bg-[#ebecf0]'
-            }`}
-          >
-            Verification Portal
-            {activeTab === 'verification' && (
-              <span className="absolute bottom-[-9px] left-3 right-3 h-[3px] bg-[#0052cc] rounded-full" />
-            )}
-          </button>
         </nav>
       </div>
 
@@ -191,13 +154,21 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* New Document Button */}
-        <button
-          onClick={onOpenCreate}
-          className="bg-[#0052cc] hover:bg-[#0065ff] active:bg-[#0747a6] text-white text-[12.5px] font-semibold px-3 py-1.5 rounded flex items-center gap-1.5 shadow-xs transition-colors"
-        >
-          <Plus size={14} />
-          <span>New Document</span>
-        </button>
+        {currentRole === 'hr' && (
+          <button
+            onClick={onOpenCreate}
+            className="bg-[#0052cc] hover:bg-[#0065ff] active:bg-[#0747a6] text-white text-[12.5px] font-semibold px-3 py-1.5 rounded flex items-center gap-1.5 shadow-xs transition-colors"
+          >
+            <Plus size={14} />
+            <span>New Document</span>
+          </button>
+        )}
+
+        <div className="h-6 w-px bg-slate-200 mx-1" />
+
+        <RoleSwitcher currentRole={currentRole} onRoleChange={onRoleChange} />
+
+        <div className="h-6 w-px bg-slate-200 mx-1" />
 
         {/* Profile Avatar & Menu */}
         <div className="relative">
@@ -206,19 +177,27 @@ export const Header: React.FC<HeaderProps> = ({
             className="flex items-center gap-2 pl-2 border-l border-[#ebecf0] hover:opacity-80 transition-opacity"
           >
             <div className="w-7 h-7 rounded-full bg-[#0052cc] text-white text-[11px] font-bold flex items-center justify-center shadow-xs">
-              HR
+              {currentRole === 'siva_kumar' ? 'SK' : currentRole === 'uma_mageshwari' ? 'UM' : 'HR'}
             </div>
             <div className="hidden lg:flex flex-col text-left leading-tight">
-              <span className="text-[12px] font-bold text-[#172b4d]">HR Admin</span>
-              <span className="text-[10px] text-[#6b778c]">ALT-S Tech</span>
+              <span className="text-[12px] font-bold text-[#172b4d]">
+                {currentRole === 'siva_kumar' ? 'Siva Kumar' : currentRole === 'uma_mageshwari' ? 'Uma Mageshwari' : 'HR Admin'}
+              </span>
+              <span className="text-[10px] text-[#6b778c]">
+                {currentRole === 'siva_kumar' ? 'Managing Director' : currentRole === 'uma_mageshwari' ? 'Board of Director' : 'ALT-S Tech'}
+              </span>
             </div>
           </button>
 
           {showProfileMenu && (
             <div className="absolute top-10 right-0 w-52 bg-white rounded-xl shadow-2xl border border-slate-200 p-3 z-50 text-xs animate-in zoom-in-95 duration-150">
               <div className="pb-2 border-b border-slate-100">
-                <p className="font-bold text-slate-900">ALT-S HR Operations</p>
-                <p className="text-[10px] text-slate-500">hr@alt-s.com</p>
+                <p className="font-bold text-slate-900">
+                  {currentRole === 'siva_kumar' ? 'Siva Kumar' : currentRole === 'uma_mageshwari' ? 'Uma Mageshwari' : 'ALT-S HR Operations'}
+                </p>
+                <p className="text-[10px] text-slate-500">
+                  {currentRole === 'siva_kumar' ? 'director@alt-s.com' : currentRole === 'uma_mageshwari' ? 'bod@alt-s.com' : 'hr@alt-s.com'}
+                </p>
                 <span className="inline-block mt-1 px-1.5 py-0.5 bg-emerald-50 text-emerald-700 font-bold text-[9px] rounded border border-emerald-200">
                   ● Enterprise Active
                 </span>
@@ -229,12 +208,6 @@ export const Header: React.FC<HeaderProps> = ({
                   className="w-full text-left px-2 py-1.5 hover:bg-slate-50 rounded text-slate-700"
                 >
                   Document Builder
-                </button>
-                <button
-                  onClick={() => { onNavigate?.('vault'); setShowProfileMenu(false); }}
-                  className="w-full text-left px-2 py-1.5 hover:bg-slate-50 rounded text-slate-700"
-                >
-                  Document Vault
                 </button>
               </div>
             </div>

@@ -140,7 +140,7 @@ export class AIAssistantService {
     }
 
     if (q.includes('pending') || q.includes('signature') || q.includes('unsigned')) {
-      const pendingDocs = documents.filter(d => d.status === 'pending_signature' || d.status === 'under_review');
+      const pendingDocs = documents.filter(d => d.status === 'signature_authorized' || d.status === 'pending_approval');
       return {
         textResponse: `There are currently ${pendingDocs.length} documents awaiting approval or digital signature. Opening the Signature Center...`,
         actionType: 'NAVIGATE_SIGNATURE_CENTER'

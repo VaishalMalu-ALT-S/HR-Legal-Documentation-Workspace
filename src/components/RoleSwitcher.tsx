@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { DatabaseService } from '../services/dbService';
 import { UserRole } from '../types';
 import { Shield, UserCheck, Key, Eye, User, ChevronDown } from 'lucide-react';
 
@@ -8,19 +9,15 @@ interface RoleSwitcherProps {
 }
 
 const roles: { role: UserRole; label: string; desc: string; icon: React.ComponentType<{ size?: number; className?: string }>; color: string }[] = [
-  { role: 'super_admin', label: 'Super Admin',           desc: 'Full access — users, settings, all modules',  icon: Shield,    color: 'text-violet-600' },
-  { role: 'hr_admin',    label: 'HR Admin',              desc: 'People management, templates, document gen',  icon: UserCheck, color: 'text-sky-600'    },
-  { role: 'signatory',   label: 'Authorized Signatory',  desc: 'DSC hardware signing & approvals',            icon: Key,       color: 'text-amber-600'  },
-  { role: 'employee',    label: 'Employee / Contractor', desc: 'View, acknowledge & download own documents',  icon: User,      color: 'text-emerald-600'},
-  { role: 'auditor',     label: 'Compliance Auditor',    desc: 'Read-only audit trail & hash verification',   icon: Eye,       color: 'text-rose-600'   },
+  { role: 'hr',    label: 'HR',                     desc: 'Create and manage documents',                 icon: UserCheck, color: 'text-sky-600'    },
+  { role: 'siva_kumar',   label: 'Siva Kumar',             desc: 'Managing Director - Approve & Sign',          icon: Shield,    color: 'text-amber-600'  },
+  { role: 'uma_mageshwari', label: 'Uma Mageshwari',         desc: 'Board of Director - Approve & Sign',          icon: Key,       color: 'text-violet-600' },
 ];
 
-const roleLabelMap: Record<UserRole, string> = {
-  super_admin: 'Super Admin',
-  hr_admin: 'HR Admin',
-  signatory: 'Signatory',
-  employee: 'Employee',
-  auditor: 'Auditor',
+const roleLabelMap: Record<string, string> = {
+  hr: 'HR',
+  siva_kumar: 'Siva Kumar',
+  uma_mageshwari: 'Uma Mageshwari',
 };
 
 export const RoleSwitcher: React.FC<RoleSwitcherProps> = ({ currentRole, onRoleChange }) => {
@@ -54,7 +51,11 @@ export const RoleSwitcher: React.FC<RoleSwitcherProps> = ({ currentRole, onRoleC
                   <button
                     key={r.role}
                     id={`role-option-${r.role}`}
-                    onClick={() => { onRoleChange(r.role); setOpen(false); }}
+                    onClick={() => { 
+                      onRoleChange(r.role); 
+                      DatabaseService.setSessionRole(r.role);
+                      setOpen(false); 
+                    }}
                     className={`w-full text-left px-3 py-2.5 rounded-lg flex items-start gap-3 transition-colors ${
                       isSelected
                         ? 'bg-sky-50 border border-sky-200'

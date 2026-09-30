@@ -1,17 +1,19 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import {
   Upload, Download, Pen, Move, X,
   RotateCcw, RotateCw, Crop, Sun, Contrast, Layers,
   Eraser, ZoomIn, ZoomOut,
   Settings, RefreshCw,
-  FolderOpen, Maximize2, Calendar, Stamp
+  FolderOpen, Maximize2, Calendar, Stamp, Lock, Unlock
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 import * as mammoth from 'mammoth';
 import { getAltSCorporateStamp } from '../utils/stampGenerator';
 import { COMPANY_TEMPLATES } from '../data/templates';
+import { COMPANIES, CompanyBrand } from '../data/companies';
 import { SmartDocument } from '../types';
+import { DatabaseService } from '../services/dbService';
 
 /* ─── Types ─────────────────────────────────────────────────────────── */
 interface Sig {
@@ -180,9 +182,28 @@ interface SignatureCenterProps {
 }
 
 export const SignatureCenter: React.FC<SignatureCenterProps> = ({
+  documents = [],
+  preselectedDocId,
   onSignatureSuccess,
   selectedTemplate = 'offer_letter',
+  currentRole = 'hr',
 }) => {
+  const targetDoc = documents.find(d => d.id === preselectedDocId);
+  const isApproved = targetDoc?.status === 'signature_authorized' || targetDoc?.status === 'approved';
+  const approvedBy = targetDoc?.approvalWorkflow?.steps.find(s => s.status === 'approved')?.roleName;
+  const parsedVars = targetDoc?.variableValues?.variables ? JSON.parse(targetDoc.variableValues.variables) : {};
+  const approverRoleStr = parsedVars.approver || approvedBy;
+  
+  let approverName = 'Authorized Signatory';
+  let approverTitle = 'Authorized Representative';
+  
+  if (approverRoleStr?.toLowerCase().includes('siva') || approverRoleStr?.toLowerCase().includes('managing')) {
+      approverName = 'Siva Kumar';
+      approverTitle = 'Managing Director';
+  } else if (approverRoleStr?.toLowerCase().includes('uma') || approverRoleStr?.toLowerCase().includes('board')) {
+      approverName = 'Uma Mageshwari';
+      approverTitle = 'Board of Director';
+  }
   // Document state
   const [docPages, setDocPages] = useState<string[]>([]);
   const [hasUploadedDoc, setHasUploadedDoc] = useState(false);
@@ -190,6 +211,9 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
   const [currentPage, setCurrentPage] = useState(0);
   const [docLoading, setDocLoading] = useState(false);
   const [_error, setError] = useState<string | null>(null);
+
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string>('alt_s');
+  const selectedCompany = COMPANIES.find(c => c.id === selectedCompanyId) || COMPANIES[0];
 
   // Signatures state
   const [sigs, setSigs] = useState<Sig[]>([]);
@@ -279,7 +303,10 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
   };
 
   /* ── Add Signature ── */
-  const addSig = (src: string, type: 'signature' | 'stamp' | 'date' = 'signature') => {
+  const addSig = (src: string, type: 'signature' | 'stamp' | 'date' = 'signature', signatoryRole?: string) => {
+    if (type === 'signature' && signatoryRole && targetDoc) {
+      DatabaseService.recordSignaturePlacement(targetDoc.id, signatoryRole, 'Suresh Kumar');
+    }
     if (type === 'signature') {
       storeSig(src);
       setSavedSigs(getSaved());
@@ -446,12 +473,49 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
   };
 
   /* ── Render Document Template ── */
+  const handleApproveFromViewer = async () => {
+    if (!targetDoc) return;
+    try {
+      // Find the pending step for this manager
+      const stepIndex = targetDoc.approvalWorkflow?.steps.findIndex(s => s.status === 'pending');
+      if (stepIndex !== undefined && stepIndex !== -1) {
+        const stepNum = targetDoc.approvalWorkflow.steps[stepIndex].stepNumber;
+        DatabaseService.updateApprovalStatus(
+          targetDoc.id,
+          stepNum,
+          'approved',
+          'Approved & Unlocked via Signature Viewer',
+          currentRole === 'siva_kumar' ? 'Siva Kumar' : 'Uma Mageshwari',
+          currentRole as any
+        );
+        if (onSignatureSuccess) onSignatureSuccess();
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Failed to approve and unlock.');
+    }
+  };
+
   const renderTemplateBody = () => {
-    // Check if selectedTemplate matches any company template ID
-    const tpl = COMPANY_TEMPLATES.find(t => t.id === selectedTemplate) ||
-      (selectedTemplate === 'employment_agreement' ? COMPANY_TEMPLATES.find(t => t.id === 'appointment_solution_architect') : null) ||
-      (selectedTemplate === 'contractor_agreement' ? COMPANY_TEMPLATES.find(t => t.id === 'contractor_offer') : null) ||
-      (selectedTemplate === 'nda_policy' ? COMPANY_TEMPLATES.find(t => t.id === 'asset_acknowledgment') : null) ||
+    // If we have saved HTML content, use it!
+    if (targetDoc?.variableValues?.content) {
+      return (
+        <div
+          contentEditable={false} // Prevent editing of approved docs
+          className="outline-none text-[13px] leading-relaxed min-h-[500px]"
+          dangerouslySetInnerHTML={{ __html: targetDoc.variableValues.content }}
+        />
+      );
+    }
+
+    // Fallback to generating from template (should rarely happen now)
+    const templateKey = targetDoc?.category || selectedTemplate;
+
+    // Check if templateKey matches any company template ID
+    const tpl = COMPANY_TEMPLATES.find(t => t.id === templateKey) ||
+      (templateKey === 'employment_agreement' ? COMPANY_TEMPLATES.find(t => t.id === 'appointment_solution_architect') : null) ||
+      (templateKey === 'contractor_agreement' ? COMPANY_TEMPLATES.find(t => t.id === 'contractor_offer') : null) ||
+      (templateKey === 'nda_policy' ? COMPANY_TEMPLATES.find(t => t.id === 'asset_acknowledgment') : null) ||
       COMPANY_TEMPLATES[0];
 
     return (
@@ -485,6 +549,19 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
       {/* ─── Logical Top Subheader Bar ─── */}
       <div className="h-11 border-b border-[#ebecf0] px-5 flex items-center justify-between bg-white z-20 shrink-0">
         <div className="flex items-center gap-3">
+          <div className="flex items-center space-x-2 border-r border-slate-200 pr-3">
+            <span className="text-[10px] text-slate-500 font-medium">COMPANY:</span>
+            <select
+              value={selectedCompanyId}
+              onChange={(e) => setSelectedCompanyId(e.target.value)}
+              className="text-[11px] font-semibold text-slate-700 bg-white border border-slate-300 rounded px-1.5 py-0.5 outline-none hover:border-indigo-400"
+            >
+              {COMPANIES.map(c => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </div>
+          
           <span className="text-[11px] text-[#6b778c] font-medium">
             Human Resources / Documents & Signing
           </span>
@@ -499,38 +576,20 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
 
         {/* Quick Toolbar Action Buttons */}
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded text-[12px] font-semibold text-[#42526e] hover:bg-[#ebecf0] border border-[#dfe1e6] transition-colors"
-            title="Import DOCX, PDF or Image"
-          >
-            <FolderOpen size={14} className="text-[#0052cc]" />
-            <span>Import Doc</span>
-          </button>
-
-          <button
-            onClick={() => sigInputRef.current?.click()}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded text-[12px] font-semibold text-[#42526e] hover:bg-[#ebecf0] border border-[#dfe1e6] transition-colors"
-          >
-            <Upload size={14} className="text-emerald-600" />
-            <span>Upload Sign</span>
-          </button>
-
-          <button
-            onClick={() => setDrawModalOpen(true)}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded text-[12px] font-semibold text-[#42526e] hover:bg-[#ebecf0] border border-[#dfe1e6] transition-colors"
-          >
-            <Pen size={14} className="text-[#0052cc]" />
-            <span>Draw Sign</span>
-          </button>
-
-          <button
-            onClick={handleDownload}
-            className="bg-[#0052cc] hover:bg-[#0065ff] text-white text-[12px] font-semibold px-3 py-1 rounded shadow-xs flex items-center gap-1.5 transition-colors ml-1"
-          >
-            <Download size={14} />
-            <span>Download Signed PDF</span>
-          </button>
+          {isApproved ? (
+            <button
+              onClick={handleDownload}
+              className="bg-[#0052cc] hover:bg-[#0065ff] text-white text-[12px] font-semibold px-4 py-1.5 rounded shadow-xs flex items-center gap-1.5 transition-colors ml-1"
+            >
+              <Download size={14} />
+              <span>Finish & Save</span>
+            </button>
+          ) : (
+            <span className="text-[11px] font-bold text-rose-600 bg-rose-50 px-2 py-1 rounded border border-rose-200">
+              <Lock size={12} className="inline mr-1" />
+              Document Not Approved
+            </span>
+          )}
         </div>
       </div>
 
@@ -577,22 +636,32 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
             <div className="w-full h-full p-12 text-[#172b4d] flex flex-col justify-between select-text">
               <div>
                 {/* Official Letterhead Header */}
-                <div className="flex justify-between items-start pb-4 border-b-2 border-slate-900">
-                  <div className="w-44">
-                    <img src="/altslogo.png" alt="ALT-S Logo" className="w-full h-auto object-contain" />
-                  </div>
-                  <div className="border border-slate-400 p-2 text-right bg-slate-50 text-[10px] leading-tight">
-                    <div className="font-bold text-slate-900 mb-0.5">ALT-S TECHNOLOGY PRIVATE LIMITED</div>
-                    <div className="text-slate-600">
-                      No. 4, Mullai Street, Thiruvalluvar Nagar,<br />
-                      Kamarajnagar, Poonamallee, Tiruvallur,<br />
-                      Tamil Nadu - 600071, INDIA
+                <div className="mb-4">
+                  <div className="flex items-end mb-8 w-full relative">
+                    {/* Company Logo */}
+                    <img
+                      src={selectedCompany.logoUrl}
+                      alt={selectedCompany.name}
+                      className="max-h-[75px] max-w-[260px] object-contain shrink-0"
+                      onError={(e) => {
+                        (e.target as HTMLElement).style.display = 'none';
+                      }}
+                    />
+
+                    {/* Right Side: Address & Thick Bar */}
+                    <div className="flex flex-col flex-1 max-h-[75px] justify-between ml-2">
+                      <div className="flex justify-end w-full">
+                        <div className="border-l-[1.5px] border-slate-400 pl-2.5 py-0.5 text-[10px] leading-[1.3] text-slate-800 text-left font-sans">
+                          <p className="font-bold text-[11px] uppercase text-slate-900 border-b-[1px] border-slate-400 pb-[3px] mb-[3px]">{selectedCompany.headerText}</p>
+                          <div className="whitespace-pre-line text-slate-800">{selectedCompany.address}</div>
+                        </div>
+                      </div>
+                      
+                      {/* Solid Dark Separator Bar matching PDF */}
+                      <div className="h-[14px] w-full rounded-l-3xl mb-[4px]" style={{ backgroundColor: '#474a51' }}></div>
                     </div>
                   </div>
                 </div>
-
-                {/* Thick Black Divider Line */}
-                <div className="w-full h-3 bg-slate-900 rounded-l-full mt-2 mb-8" />
 
                 {/* Body Content */}
                 {renderTemplateBody()}
@@ -601,8 +670,8 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
               {/* Signature Acceptance Box */}
               <div className="pt-16 pb-6 flex justify-between items-end border-t border-slate-200 mt-12">
                 <div>
-                  <p className="font-bold text-[12px] text-slate-800">Authorized Signatory</p>
-                  <p className="text-[11px] text-slate-500">ALT-S Technology Pvt Ltd</p>
+                  <p className="font-bold text-[12px] text-slate-800">{approverName}</p>
+                  <p className="text-[11px] text-slate-500">{approverTitle} - {selectedCompany.name}</p>
                   <div className="mt-1.5 text-[9.5px] text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 inline-block">
                     ✓ Verified Corporate Seal
                   </div>
@@ -811,69 +880,83 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
             <Move size={15} />
           </button>
 
-          {/* Import Document */}
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="flex items-center gap-1 px-2.5 py-1 text-[#172b4d] hover:bg-[#ebecf0] rounded-lg font-semibold text-[11.5px] transition-colors"
-            title="Import DOCX, PDF or Image"
-          >
-            <FolderOpen size={14} className="text-[#0052cc]" />
-            <span>Import Doc</span>
-          </button>
+          <>
+              <div className="h-5 w-px bg-[#dfe1e6]" />
 
-          <div className="h-5 w-px bg-[#dfe1e6]" />
+              {/* Signatures */}
+              {currentRole === 'hr' && (
+                <div className="flex items-center gap-2 mr-2">
+                  <span className="font-bold text-[10px] text-emerald-700 uppercase tracking-wider bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">Signature Available</span>
+                </div>
+              )}
 
-          {/* Upload Sign */}
-          <button
-            onClick={() => sigInputRef.current?.click()}
-            className="flex items-center gap-1 px-2.5 py-1 text-[#172b4d] hover:bg-[#ebecf0] rounded-lg font-semibold text-[11.5px] transition-colors"
-            title="Upload Signature Image (PNG/JPG)"
-          >
-            <Upload size={14} className="text-emerald-600" />
-            <span>Upload Sign</span>
-          </button>
+              {/* Show Siva signature if approved by Siva (HR sees it locked if not approved) */}
+              {currentRole === 'hr' && (
+                <button
+                  onClick={() => {
+                    const isAuth = (targetDoc?.authorizations?.some(a => a.signatoryRole === 'siva_kumar' || a.signatoryRole === 'HR Manager' || a.signatoryRole === 'Authorized Signatory' || a.signatoryName === 'Siva Kumar') || targetDoc?.status === 'signature_authorized');
+                    if (!isAuth) return;
+                    addSig('/sign1.jpg', 'signature', 'siva_kumar');
+                  }}
+                  disabled={!(targetDoc?.authorizations?.some(a => a.signatoryRole === 'siva_kumar' || a.signatoryRole === 'HR Manager' || a.signatoryRole === 'Authorized Signatory' || a.signatoryName === 'Siva Kumar') || targetDoc?.status === 'signature_authorized')}
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded-lg font-semibold text-[11.5px] transition-colors ${
+                    !(targetDoc?.authorizations?.some(a => a.signatoryRole === 'siva_kumar' || a.signatoryRole === 'HR Manager' || a.signatoryRole === 'Authorized Signatory' || a.signatoryName === 'Siva Kumar') || targetDoc?.status === 'signature_authorized')
+                      ? 'text-slate-400 bg-slate-50 cursor-not-allowed border border-slate-200' 
+                      : 'text-[#172b4d] hover:bg-[#ebecf0]'
+                  }`}
+                  title={!(targetDoc?.authorizations?.some(a => a.signatoryRole === 'siva_kumar' || a.signatoryRole === 'HR Manager' || a.signatoryRole === 'Authorized Signatory' || a.signatoryName === 'Siva Kumar') || targetDoc?.status === 'signature_authorized') ? "Locked: Awaiting Manager Approval" : "Place Siva Kumar Signature"}
+                >
+                  {!(targetDoc?.authorizations?.some(a => a.signatoryRole === 'siva_kumar' || a.signatoryRole === 'HR Manager' || a.signatoryRole === 'Authorized Signatory' || a.signatoryName === 'Siva Kumar') || targetDoc?.status === 'signature_authorized') ? <Lock size={12} className="text-rose-500" /> : <Pen size={14} className="text-[#0052cc]" />}
+                  <span>Siva Kumar</span>
+                </button>
+              )}
 
-          {/* Draw Sign */}
-          <button
-            onClick={() => setDrawModalOpen(true)}
-            className="flex items-center gap-1 px-2.5 py-1 text-[#172b4d] hover:bg-[#ebecf0] rounded-lg font-semibold text-[11.5px] transition-colors"
-            title="Hand-Draw Signature"
-          >
-            <Pen size={14} className="text-[#0052cc]" />
-            <span>Draw Sign</span>
-          </button>
+              {/* Show Uma signature if approved by Uma (HR sees it locked if not approved) */}
+              {currentRole === 'hr' && (
+                <button
+                  onClick={() => {
+                    const isAuth = (targetDoc?.authorizations?.some(a => a.signatoryRole === 'uma_mageshwari' || a.signatoryRole === 'Authorized Signatory' || a.signatoryName === 'Uma Mageshwari') || targetDoc?.status === 'signature_authorized');
+                    if (!isAuth) return;
+                    addSig('/sign2.jpg', 'signature', 'uma_mageshwari');
+                  }}
+                  disabled={!(targetDoc?.authorizations?.some(a => a.signatoryRole === 'uma_mageshwari' || a.signatoryRole === 'Authorized Signatory' || a.signatoryName === 'Uma Mageshwari') || targetDoc?.status === 'signature_authorized')}
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded-lg font-semibold text-[11.5px] transition-colors ${
+                    !(targetDoc?.authorizations?.some(a => a.signatoryRole === 'uma_mageshwari' || a.signatoryRole === 'Authorized Signatory' || a.signatoryName === 'Uma Mageshwari') || targetDoc?.status === 'signature_authorized')
+                      ? 'text-slate-400 bg-slate-50 cursor-not-allowed border border-slate-200' 
+                      : 'text-[#172b4d] hover:bg-[#ebecf0]'
+                  }`}
+                  title={!(targetDoc?.authorizations?.some(a => a.signatoryRole === 'uma_mageshwari' || a.signatoryRole === 'Authorized Signatory' || a.signatoryName === 'Uma Mageshwari') || targetDoc?.status === 'signature_authorized') ? "Locked: Awaiting Manager Approval" : "Place Uma Mageshwari Signature"}
+                >
+                  {!(targetDoc?.authorizations?.some(a => a.signatoryRole === 'uma_mageshwari' || a.signatoryRole === 'Authorized Signatory' || a.signatoryName === 'Uma Mageshwari') || targetDoc?.status === 'signature_authorized') ? <Lock size={12} className="text-rose-500" /> : <Pen size={14} className="text-[#0052cc]" />}
+                  <span>Uma Mageshwari</span>
+                </button>
+              )}
 
-          {/* Corporate Seal */}
-          <button
-            onClick={addOfficialStamp}
-            className="flex items-center gap-1 px-2.5 py-1 text-[#172b4d] hover:bg-[#ebecf0] rounded-lg font-semibold text-[11.5px] transition-colors"
-            title="Stamp ALT-S Corporate Seal"
-          >
-            <Stamp size={14} className="text-purple-600" />
-            <span>Corporate Seal</span>
-          </button>
+              {/* Corporate Seal */}
+              {currentRole === 'hr' && (
+                <button
+                  onClick={addOfficialStamp}
+                  className="flex items-center gap-1 px-2.5 py-1 text-[#172b4d] hover:bg-[#ebecf0] rounded-lg font-semibold text-[11.5px] transition-colors"
+                  title="Stamp Corporate Seal"
+                >
+                  <Stamp size={14} className="text-purple-600" />
+                  <span>Corporate Seal</span>
+                </button>
+              )}
 
-          {/* Date Stamp */}
-          <button
-            onClick={addDateStamp}
-            className="flex items-center gap-1 px-2.5 py-1 text-[#172b4d] hover:bg-[#ebecf0] rounded-lg font-semibold text-[11.5px] transition-colors"
-            title="Add Today's Date Stamp"
-          >
-            <Calendar size={14} className="text-amber-600" />
-            <span>Date Stamp</span>
-          </button>
+              <div className="h-5 w-px bg-[#dfe1e6]" />
 
-          <div className="h-5 w-px bg-[#dfe1e6]" />
-
-          {/* Download Signed PDF */}
-          <button
-            onClick={handleDownload}
-            className="bg-[#0052cc] hover:bg-[#0065ff] active:bg-[#0747a6] text-white font-bold text-[11.5px] px-3.5 py-1.5 rounded-lg flex items-center gap-1.5 shadow-sm active:scale-95 transition-all"
-            title="Download Signed PDF Document"
-          >
-            <Download size={14} />
-            <span>Download Signed PDF</span>
-          </button>
+              {/* Finish & Save */}
+              <button
+                onClick={handleDownload}
+                className="bg-[#0052cc] hover:bg-[#0065ff] active:bg-[#0747a6] text-white font-bold text-[11.5px] px-3.5 py-1.5 rounded-lg flex items-center gap-1.5 shadow-sm active:scale-95 transition-all"
+                title="Finish & Save Document"
+              >
+                <Download size={14} />
+                <span>Finish & Save</span>
+              </button>
+            </>
+          
         </div>
       </div>
 

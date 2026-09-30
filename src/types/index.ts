@@ -1,4 +1,4 @@
-export type UserRole = 'super_admin' | 'hr_admin' | 'signatory' | 'employee' | 'auditor';
+export type UserRole = 'uma_mageshwari' | 'hr' | 'siva_kumar';
 
 export interface UserProfile {
   id: string;
@@ -55,7 +55,7 @@ export interface TemplateVariable {
   defaultValue?: string;
   description?: string;
   required: boolean;
-  category: 'employee' | 'contractor' | 'company' | 'custom';
+  category: 'employee_archived' | 'contractor' | 'company' | 'custom';
 }
 
 export interface TemplateVersion {
@@ -84,15 +84,13 @@ export interface DocumentTemplate {
 
 export type DocumentStatus = 
   | 'draft'
-  | 'generated'
-  | 'under_review'
+  | 'pending_approval'
+    | 'waiting_for_approval'
+  | 'correction_required'
   | 'approved'
-  | 'pending_signature'
-  | 'partially_signed'
+  | 'signature_authorized'
   | 'signed'
-  | 'rejected'
-  | 'expired'
-  | 'archived';
+  | 'completed';
 
 export interface DocumentSignature {
   id: string;
@@ -113,9 +111,34 @@ export interface ApprovalStep {
   stepNumber: number;
   roleName: string; // 'HR Admin' | 'HR Manager' | 'Legal' | 'Authorized Signatory'
   assignedToName?: string;
-  status: 'pending' | 'approved' | 'rejected' | 'changes_requested';
+  status: 'pending' | 'approved' | 'rejected' | 'correction_required' | 'changes_requested';
   comment?: string;
   updatedAt?: string;
+}
+
+export interface DocumentAuthorization {
+  id: string;
+  documentId: string;
+  signatoryRole: string; // 'siva_kumar' | 'uma_mageshwari'
+  signatoryName: string;
+  signatoryEmail: string;
+  method: 'otp' | 'direct';
+  authorizedAt: string;
+  usedAt?: string;
+  usedByRole?: string; // e.g. 'hr'
+}
+
+
+export interface DocumentAuthorization {
+  id: string;
+  documentId: string;
+  signatoryRole: string; // 'siva_kumar' | 'uma_mageshwari'
+  signatoryName: string;
+  signatoryEmail: string;
+  method: 'otp' | 'direct';
+  authorizedAt: string;
+  usedAt?: string;
+  usedByRole?: string; // e.g. 'hr'
 }
 
 export interface DocumentApprovalWorkflow {
@@ -123,7 +146,7 @@ export interface DocumentApprovalWorkflow {
   documentId: string;
   currentStepIndex: number;
   steps: ApprovalStep[];
-  status: 'in_progress' | 'approved' | 'rejected';
+  status: 'in_progress' | 'approved' | 'rejected' | 'correction_required';
 }
 
 export interface SmartDocument {
@@ -131,6 +154,7 @@ export interface SmartDocument {
   documentNumber: string; // e.g. DOC-2026-000124
   title: string;
   category: DocumentCategory;
+  companyId: string;
   employeeId?: string;
   contractorId?: string;
   personName: string;
@@ -150,6 +174,7 @@ export interface SmartDocument {
   signedAt?: string;
   signatures: DocumentSignature[];
   approvalWorkflow: DocumentApprovalWorkflow;
+    authorizations?: DocumentAuthorization[];
   contentRenderedHtml?: string;
   pdfDataUrl?: string;
   createdAt: string;

@@ -3,8 +3,7 @@ import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
 import { DocumentBuilder } from './components/DocumentBuilder';
 import { SignatureCenter } from './components/SignatureCenter';
-import { DocumentVault } from './components/DocumentVault';
-import { DocumentVerification } from './components/DocumentVerification';
+import { ApprovalWorkflow } from './components/ApprovalWorkflow';
 import { SecureSharingModal } from './components/SecureSharingModal';
 
 import { UserRole } from './types';
@@ -14,7 +13,7 @@ export function App() {
   const [currentTab, setCurrentTab] = useState('signature');
   const [selectedTemplate, setSelectedTemplate] = useState('offer_letter');
   const [collapsed, setCollapsed] = useState(false);
-  const [currentRole] = useState<UserRole>('super_admin');
+  const [currentRole, setCurrentRole] = useState<UserRole>('hr');
   const [shareModalDocId, setShareModalDocId] = useState<string | null>(null);
 
   // Navigation Payloads
@@ -32,6 +31,13 @@ export function App() {
     return unsubscribe;
   }, []);
 
+  // Redirect if role changes to restricted tabs
+  useEffect(() => {
+    if (currentRole !== 'hr' && currentTab === 'builder') {
+      setCurrentTab('approval');
+    }
+  }, [currentRole, currentTab]);
+
   const handleNavigate = (tab: string, payload?: { documentId?: string; documentNumber?: string; templateId?: string }) => {
     if (payload?.documentId) setSignatureDocId(payload.documentId);
     if (payload?.documentNumber) setVerificationDocNumber(payload.documentNumber);
@@ -48,6 +54,8 @@ export function App() {
           setSelectedTemplate('offer_letter');
           setCurrentTab('signature');
         }}
+        currentRole={currentRole}
+        onRoleChange={setCurrentRole}
       />
 
       {/* Main Container: Sidebar + Content Canvas */}
@@ -60,6 +68,7 @@ export function App() {
           setCollapsed={setCollapsed}
           activeDocTemplate={selectedTemplate}
           onSelectDocTemplate={(tpl) => setSelectedTemplate(tpl)}
+          currentRole={currentRole}
         />
 
         {/* Content Area */}
@@ -70,42 +79,35 @@ export function App() {
               currentRole={currentRole}
               preselectedDocId={signatureDocId}
               selectedTemplate={selectedTemplate}
-              onSignatureSuccess={() => handleNavigate('vault')}
+              onSignatureSuccess={() => handleNavigate('signature')}
             />
           )}
 
-          {currentTab === 'builder' && (
+          {currentTab === 'builder' && currentRole === 'hr' && (
             <div className="flex-1 h-full overflow-hidden">
               <DocumentBuilder
                 initialTemplateId={selectedTemplate}
-                onSaveSuccess={() => handleNavigate('vault')}
+                onSaveSuccess={() => handleNavigate('signature')}
               />
             </div>
           )}
 
-          {currentTab === 'vault' && (
+          {currentTab === 'approval' && (
             <div className="flex-1 h-full overflow-y-auto p-6 bg-[#f4f5f7]">
               <div className="max-w-6xl mx-auto">
-                <DocumentVault
+                <ApprovalWorkflow
                   documents={documents}
                   currentRole={currentRole}
-                  onNavigateToVerify={(docNum) => handleNavigate('verification', { documentNumber: docNum })}
-                  onOpenShareModal={(docId) => setShareModalDocId(docId)}
+                  onNavigateToSignature={(docId) => {
+                    setSignatureDocId(docId);
+                    setCurrentTab('signature');
+                  }}
                 />
               </div>
             </div>
           )}
 
-          {currentTab === 'verification' && (
-            <div className="flex-1 h-full overflow-y-auto p-6 bg-[#f4f5f7]">
-              <div className="max-w-4xl mx-auto">
-                <DocumentVerification
-                  initialDocNumber={verificationDocNumber}
-                  documents={documents}
-                />
-              </div>
-            </div>
-          )}
+
         </main>
       </div>
 

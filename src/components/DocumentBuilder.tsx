@@ -3,16 +3,18 @@ import {
   Bold, Italic, Underline, Strikethrough, AlignLeft, AlignCenter,
   AlignRight, AlignJustify, List, ListOrdered, Indent, Outdent,
   Palette, Highlighter, Table, Calendar, RotateCcw,
-  RotateCw, Download, Printer, Save, FileText, Check, Plus,
+  RotateCw, Download, Printer, Save, FileText, UploadCloud, Check, Plus,
   Minus, Sparkles, Trash2, X, Stamp as StampIcon, PenTool,
   LayoutTemplate, ArrowDown, ArrowUp
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 import { COMPANY_TEMPLATES } from '../data/templates';
+import { COMPANIES, CompanyBrand } from '../data/companies';
 import { getAltSCorporateStamp } from '../utils/stampGenerator';
 import { DatabaseService } from '../services/dbService';
 import { DocumentCategory } from '../types';
+import { DocumentUploader } from './DocumentUploader';
 
 interface StampItem {
   id: string;
@@ -46,6 +48,13 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
   initialTemplateId = 'asset_acknowledgment',
   onSaveSuccess
 }) => {
+  const [creationMode, setCreationMode] = useState<'template'|'upload'>('template');
+  
+
+
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string>('alt_s');
+  const selectedCompany = COMPANIES.find(c => c.id === selectedCompanyId) || COMPANIES[0];
+
   // Current active template
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>(initialTemplateId);
   const [documentTitle, setDocumentTitle] = useState<string>('Official Document');
@@ -575,6 +584,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
       await DatabaseService.createDocument({
         title: documentTitle,
         category: (selectedTemplateId === 'asset_acknowledgment' ? 'acknowledgement_form' : 'appointment_letter') as DocumentCategory,
+        companyId: selectedCompanyId,
         personName: variables.recipientName || 'Employee / Consultant',
         personEmail: 'hr@alt-s.com',
         personRole: variables.designation || 'Candidate',
@@ -607,6 +617,10 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
     }
   };
 
+  if (creationMode === 'upload') {
+    return <DocumentUploader onSwitch={() => setCreationMode('template')} onSaveSuccess={() => onSaveSuccess && onSaveSuccess()} />;
+  }
+
   return (
     <div className="h-full flex flex-col bg-[#f1f3f6] overflow-hidden font-sans text-slate-900 select-none">
       {/* ── Top Bar: Template Selector & Actions ── */}
@@ -628,6 +642,17 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
               </option>
             ))}
           </select>
+          
+          <div className="flex items-center space-x-2 border-l border-slate-200 pl-3 ml-2">
+            <button
+              onClick={() => setCreationMode('upload')}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[11px] font-bold rounded-md border border-indigo-200 shadow-sm transition-colors"
+              title="Upload existing Document"
+            >
+              <UploadCloud size={14} />
+              <span>Upload Document</span>
+            </button>
+          </div>
 
           <input
             type="text"
