@@ -37,16 +37,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   if (collapsed) {
     return (
-      <aside className="w-12 bg-[#fafbfc] border-r border-[#ebecf0] shrink-0 flex flex-col items-center py-3 gap-3 select-none">
+      <aside className="w-10 bg-[#fafbfc] border-r border-[#ebecf0] shrink-0 flex flex-col items-center py-3 gap-3 select-none">
         <button
           onClick={() => setCollapsed(false)}
           className="p-1.5 hover:bg-[#ebecf0] rounded text-[#42526e] transition-colors"
           title="Expand sidebar"
         >
-          <ChevronRight size={16} />
+          <ChevronRight size={14} />
         </button>
 
-        <div className="w-8 h-8 rounded bg-white border border-slate-200 flex items-center justify-center p-0.5 shadow-xs">
+        <div className="w-6 h-6 rounded bg-white border border-slate-200 flex items-center justify-center p-0.5 shadow-xs">
           <img src="/altslogo.png" alt="ALT-S" className="w-full h-full object-contain" />
         </div>
 
@@ -59,7 +59,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           }`}
           title="Sign & Stamp Studio"
         >
-          <PenTool size={16} />
+          <PenTool size={14} />
         </button>
 
         <button
@@ -69,7 +69,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           }`}
           title="Approval Center"
         >
-          <CheckCircle2 size={16} />
+          <CheckCircle2 size={14} />
         </button>
 
         {currentRole === 'hr' && (
@@ -80,7 +80,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             }`}
             title="Letterhead Editor"
           >
-            <LayoutTemplate size={16} />
+            <LayoutTemplate size={14} />
           </button>
         )}
 
@@ -90,19 +90,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
   }
 
   return (
-    <aside className="w-[236px] bg-[#fafbfc] border-r border-[#ebecf0] shrink-0 flex flex-col justify-between select-none h-full">
+    <aside className="w-[190px] bg-[#fafbfc] border-r border-[#ebecf0] shrink-0 flex flex-col justify-between select-none h-full">
       <div className="flex flex-col flex-1 overflow-y-auto">
         {/* Workspace Title & Collapse Toggle */}
         <div className="px-3 pt-3.5 pb-2.5 flex items-center justify-between border-b border-[#ebecf0]/70">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded bg-white border border-slate-200 flex items-center justify-center p-0.5 shadow-xs shrink-0">
+            <div className="w-6 h-6 rounded bg-white border border-slate-200 flex items-center justify-center p-0.5 shadow-xs shrink-0">
               <img src="/altslogo.png" alt="ALT-S" className="w-full h-full object-contain" />
             </div>
             <div className="flex flex-col">
-              <span className="font-bold text-[13.5px] text-[#172b4d] tracking-tight leading-none">
+              <span className="font-bold text-[12px] text-[#172b4d] tracking-tight leading-none">
                 ALT-S HR & Legal
               </span>
-              <span className="text-[10px] text-[#6b778c] font-medium mt-0.5">
+              <span className="text-[9px] text-[#6b778c] font-medium mt-0.5">
                 Document Workspace
               </span>
             </div>
@@ -123,7 +123,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <div>
             <button
               onClick={() => setSigningOpen(!signingOpen)}
-              className="w-full flex items-center gap-1.5 px-2 py-1 text-[11px] font-bold text-[#6b778c] uppercase tracking-wider hover:text-[#172b4d]"
+              className="w-full flex items-center gap-1.5 px-2 py-1 text-[10px] font-bold text-[#6b778c] uppercase tracking-wider hover:text-[#172b4d]"
             >
               {signingOpen ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
               <span>{currentRole === 'hr' ? 'HR WORKSPACE' : 'MANAGEMENT'}</span>
@@ -134,7 +134,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 {currentRole === 'hr' && (
                   <button
                     onClick={() => setCurrentTab('approval')}
-                    className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-[13px] font-semibold transition-colors text-left ${
+                    className={`w-full flex items-center gap-2 px-2 py-1 rounded text-[11px] font-semibold transition-colors text-left ${
                       currentTab === 'approval'
                         ? 'bg-[#deebff] text-[#0052cc]'
                         : 'text-[#42526e] hover:bg-[#ebecf0]'
@@ -150,7 +150,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 {currentRole === 'hr' && (
                   <button
                     onClick={() => setCurrentTab('builder')}
-                    className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-[13px] font-semibold transition-colors text-left ${
+                    className={`w-full flex items-center gap-2 px-2 py-1 rounded text-[11px] font-semibold transition-colors text-left ${
                       currentTab === 'builder'
                         ? 'bg-[#deebff] text-[#0052cc]'
                         : 'text-[#42526e] hover:bg-[#ebecf0]'
@@ -166,7 +166,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 {currentRole === 'hr' && (
                   <button
                     onClick={() => setCurrentTab('signature')}
-                    className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-[13px] font-semibold transition-colors text-left ${
+                    className={`w-full flex items-center gap-2 px-2 py-1 rounded text-[11px] font-semibold transition-colors text-left ${
                       currentTab === 'signature'
                         ? 'bg-[#deebff] text-[#0052cc]'
                         : 'text-[#42526e] hover:bg-[#ebecf0]'
@@ -182,7 +182,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 {currentRole !== 'hr' && (
                   <button
                     onClick={() => setCurrentTab('approval')}
-                    className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-[13px] font-semibold transition-colors text-left ${
+                    className={`w-full flex items-center gap-2 px-2 py-1 rounded text-[11px] font-semibold transition-colors text-left ${
                       currentTab === 'approval'
                         ? 'bg-[#deebff] text-[#0052cc]'
                         : 'text-[#42526e] hover:bg-[#ebecf0]'
@@ -198,7 +198,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 {currentRole !== 'hr' && (
                   <button
                     onClick={() => setCurrentTab('signature')}
-                    className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-[13px] font-semibold transition-colors text-left ${
+                    className={`w-full flex items-center gap-2 px-2 py-1 rounded text-[11px] font-semibold transition-colors text-left ${
                       currentTab === 'signature'
                         ? 'bg-[#deebff] text-[#0052cc]'
                         : 'text-[#42526e] hover:bg-[#ebecf0]'
@@ -214,7 +214,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 {currentRole !== 'hr' && (
                   <button
                     onClick={() => setCurrentTab('signature')}
-                    className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-[13px] font-semibold transition-colors text-left ${
+                    className={`w-full flex items-center gap-2 px-2 py-1 rounded text-[11px] font-semibold transition-colors text-left ${
                       currentTab === 'signature'
                         ? 'bg-[#deebff] text-[#0052cc]'
                         : 'text-[#42526e] hover:bg-[#ebecf0]'

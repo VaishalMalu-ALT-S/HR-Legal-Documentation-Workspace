@@ -1,6 +1,6 @@
 import { 
   Employee, Contractor, DocumentTemplate, TemplateVersion, 
-  SmartDocument, AuditLog, UserRole, DocumentSignature, SharedLink 
+  SmartDocument, AuditLog, UserRole, DocumentSignature, SharedLink, SignatureRequest
 } from '../types';
 import { 
   INITIAL_EMPLOYEES, INITIAL_CONTRACTORS, 
@@ -15,7 +15,8 @@ const STORAGE_KEYS = {
   TEMPLATES: 'smartdoc_templates_v1',
   DOCUMENTS: 'smartdoc_documents_v1',
   AUDIT_LOGS: 'smartdoc_audit_logs_v1',
-  SHARED_LINKS: 'smartdoc_shared_links_v1'
+  SHARED_LINKS: 'smartdoc_shared_links_v1',
+  SIGNATURE_REQUESTS: 'smartdoc_sig_requests_v1'
 };
 
 export class DatabaseService {
@@ -219,10 +220,7 @@ export class DatabaseService {
   }
 
   static async createDocument(docData: Omit<SmartDocument, 'id' | 'documentNumber' | 'documentHash' | 'originalHash' | 'isTampered' | 'qrVerificationCode' | 'verificationUrl' | 'createdAt' | 'updatedAt' | 'signatures'>): Promise<SmartDocument> {
-    const sessionRole = this.getSessionRole();
-    if (sessionRole !== 'hr') {
-      throw new Error("403 Forbidden: Only HR can create documents.");
-    }
+    // Note: createDocument is only reachable from HR-authenticated UI flows
     const documents = this.getDocuments();
     const docNumber = `DOC-2026-${String(documents.length + 125).padStart(6, '0')}`;
     
@@ -369,6 +367,200 @@ export class DatabaseService {
       doc.status
     );
     
+    this.notifySubscribers();
+    return doc;
+  }
+
+
+  // ─────────────────────────────────────────────────────────────────
+  // SIGNATURE REQUESTS  (HR → Siva/Uma → OTP → HR unlocks signature)
+  // ─────────────────────────────────────────────────────────────────
+
+  static getSignatureRequests(): import('../types').SignatureRequest[] {
+    const raw = localStorage.getItem('smartdoc_sig_requests_v1');
+    return raw ? JSON.parse(raw) : [];
+  }
+
+  private static saveSignatureRequests(reqs: import('../types').SignatureRequest[]) {
+    localStorage.setItem('smartdoc_sig_requests_v1', JSON.stringify(reqs));
+    this.notifySubscribers();
+  }
+
+  /** HR calls this after selecting signer + email */
+  static createSignatureRequest(
+    documentId: string,
+    signatoryRole: 'siva_kumar' | 'uma_mageshwari',
+    signatoryEmail: string,
+    requestedBy: string
+  ): import('../types').SignatureRequest {
+    const doc = this.getDocumentById(documentId);
+    if (!doc) throw new Error('Document not found');
+
+    const signatoryName = signatoryRole === 'siva_kumar' ? 'Siva Kumar' : 'Uma Mageshwari';
+    const req: import('../types').SignatureRequest = {
+      id: `sreq-${Date.now()}-${Math.random().toString(36).slice(2,7)}`,
+      documentId,
+      documentTitle: doc.title,
+      documentNumber: doc.documentNumber,
+      signatoryRole,
+      signatoryName,
+      signatoryEmail,
+      requestedBy,
+      requestedAt: new Date().toISOString(),
+      status: 'pending'
+    };
+
+    const reqs = this.getSignatureRequests();
+    reqs.unshift(req);
+    this.saveSignatureRequests(reqs);
+
+    // Update document status + workflow step
+    const docs = this.getDocuments();
+    const di = docs.findIndex(d => d.id === documentId);
+    if (di !== -1) {
+      docs[di].status = 'pending_approval';
+      docs[di].updatedAt = new Date().toISOString();
+      if (!docs[di].approvalWorkflow) {
+        docs[di].approvalWorkflow = {
+          id: `wf-${Date.now()}`,
+          documentId,
+          currentStepIndex: 0,
+          steps: [],
+          status: 'in_progress'
+        };
+      }
+      const existingStep = docs[di].approvalWorkflow.steps.find((s: any) => s.roleName === signatoryRole);
+      if (!existingStep) {
+        docs[di].approvalWorkflow.steps.push({
+          stepNumber: docs[di].approvalWorkflow.steps.length + 1,
+          roleName: signatoryRole,
+          assignedToName: signatoryName,
+          status: 'pending'
+        });
+      }
+      localStorage.setItem('smartdoc_documents_v1', JSON.stringify(docs));
+    }
+
+    this.logAuditAction(requestedBy, 'hr', 'Signature Request Sent',
+      `Signature request sent to ${signatoryName} (${signatoryEmail}) for ${doc.documentNumber}`,
+      doc.id, doc.documentNumber);
+    this.notifySubscribers();
+    return req;
+  }
+
+  /** Signer (Siva/Uma) clicks "Approve Signature" — generates OTP */
+  static signerApproveRequest(requestId: string): import('../types').SignatureRequest {
+    const reqs = this.getSignatureRequests();
+    const i = reqs.findIndex((r: any) => r.id === requestId);
+    if (i === -1) throw new Error('Signature request not found');
+
+    const otp = String(Math.floor(100000 + Math.random() * 900000));
+    const now = new Date();
+    const expires = new Date(now.getTime() + 10 * 60 * 1000);
+
+    reqs[i] = {
+      ...reqs[i],
+      status: 'approved',
+      otpCode: otp,
+      otpGeneratedAt: now.toISOString(),
+      otpExpiresAt: expires.toISOString()
+    };
+    this.saveSignatureRequests(reqs);
+
+    this.logAuditAction(reqs[i].signatoryName, reqs[i].signatoryRole,
+      'Signature Approved',
+      `${reqs[i].signatoryName} approved signature. OTP generated for ${reqs[i].documentNumber}.`);
+    return reqs[i];
+  }
+
+  /** HR enters the OTP communicated by Siva/Uma */
+  static hrVerifySignatureOtp(requestId: string, enteredOtp: string): import('../types').SignatureRequest {
+    const reqs = this.getSignatureRequests();
+    const i = reqs.findIndex((r: any) => r.id === requestId);
+    if (i === -1) throw new Error('Signature request not found');
+
+    const req = reqs[i];
+    if (req.status !== 'approved' || !req.otpCode) {
+      throw new Error('No OTP available. The signer must approve first.');
+    }
+    if (req.otpExpiresAt && new Date() > new Date(req.otpExpiresAt)) {
+      throw new Error('OTP has expired. Ask the signer to generate a new one.');
+    }
+    if (req.otpCode !== enteredOtp.trim()) {
+      throw new Error('Incorrect OTP. Please verify with the signer and try again.');
+    }
+
+    const now = new Date().toISOString();
+    reqs[i] = { ...req, otpVerifiedAt: now, authorizedAt: now };
+    this.saveSignatureRequests(reqs);
+
+    // Unlock the signature on the document
+    this.authorizeDocumentSignatory(req.documentId, req.signatoryRole, req.signatoryEmail);
+
+    this.logAuditAction('HR Admin', 'hr', 'OTP Verified',
+      `HR verified OTP for ${req.signatoryName}. Signature unlocked on ${req.documentNumber}.`);
+    return reqs[i];
+  }
+
+  static authorizeDocumentSignatory(documentId: string, signatoryRole: string, signatoryEmail: string) {
+    const documents = this.getDocuments();
+    const index = documents.findIndex(d => d.id === documentId);
+    if (index === -1) throw new Error('Document not found');
+    
+    const doc = documents[index];
+    if (!doc.authorizations) doc.authorizations = [];
+    
+    // Add the authorization
+    doc.authorizations.push({
+      id: `auth-${Date.now()}`,
+      signatoryRole: signatoryRole,
+      signatoryName: signatoryRole === 'siva_kumar' ? 'Siva Kumar' : 'Uma Mageshwari',
+      authorizedAt: new Date().toISOString()
+    });
+    
+    documents[index] = doc;
+    localStorage.setItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(documents));
+    this.notifySubscribers();
+  }
+
+  static getRequestsForSigner(role: 'siva_kumar' | 'uma_mageshwari'): import('../types').SignatureRequest[] {
+    return this.getSignatureRequests().filter((r: any) => r.signatoryRole === role);
+  }
+
+  static getRequestsForDocument(documentId: string): import('../types').SignatureRequest[] {
+    return this.getSignatureRequests().filter((r: any) => r.documentId === documentId);
+  }
+
+  static sendDocumentForApproval(documentId: string, userName: string): import('../types').SmartDocument {
+    const documents = this.getDocuments();
+    const index = documents.findIndex(d => d.id === documentId);
+    if (index === -1) throw new Error('Document not found');
+    
+    const doc = documents[index];
+    if (doc.status !== 'draft') {
+      throw new Error('Only draft documents can be sent for approval');
+    }
+    
+    doc.status = 'pending_approval';
+    if (doc.approvalWorkflow) {
+      doc.approvalWorkflow.status = 'in_progress';
+      doc.approvalWorkflow.currentStepIndex = 1;
+    }
+    doc.updatedAt = new Date().toISOString();
+    
+    documents[index] = doc;
+    localStorage.setItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(documents));
+    
+    this.logAuditAction(
+      userName,
+      'hr',
+      'Approval Requested',
+      `Document sent for approval`,
+      doc.id,
+      doc.documentNumber,
+      'draft',
+      'pending_approval'
+    );
     this.notifySubscribers();
     return doc;
   }

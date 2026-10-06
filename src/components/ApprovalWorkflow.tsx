@@ -1,306 +1,372 @@
-import React, { useState } from 'react';
-import { CheckCircle2, XCircle, Lock } from 'lucide-react';
-import { SmartDocument, UserRole } from '../types';
+import React, { useState, useEffect } from 'react';
+import { Lock, CheckCircle2, Clock, Eye, ShieldCheck, FileText, Send, ChevronRight } from 'lucide-react';
+import { SmartDocument, UserRole, SignatureRequest } from '../types';
 import { DatabaseService } from '../services/dbService';
 import { OtpVerificationModal } from './OtpVerificationModal';
 
-interface ApprovalWorkflowProps {
+interface SignatureRequestsProps {
   documents: SmartDocument[];
   currentRole: UserRole;
   onNavigateToSignature: (docId: string) => void;
 }
 
-export const ApprovalWorkflow: React.FC<ApprovalWorkflowProps> = ({
+export const ApprovalWorkflow: React.FC<SignatureRequestsProps> = ({
   documents,
   currentRole,
   onNavigateToSignature
 }) => {
-  const [selectedDoc, setSelectedDoc] = useState<SmartDocument>(documents[0] || null);
-  const [comment, setComment] = useState('');
-  const [showOtpModal, setShowOtpModal] = useState(false);
-  const [pendingApprovalStep, setPendingApprovalStep] = useState<number | null>(null);
+  const [requests, setRequests] = useState<SignatureRequest[]>([]);
+  const [selectedReqId, setSelectedReqId] = useState<string | null>(null);
 
-  const initiateApproveStep = (stepNumber: number) => {
-    setPendingApprovalStep(stepNumber);
-    setShowOtpModal(true);
-  };
+  // OTP states — HR mode
+  const [hrOtpReqId, setHrOtpReqId] = useState<string | null>(null);
 
-  const handleApproveStep = (stepNumber: number) => {
-    if (!selectedDoc) return;
-    
-    // Find the role for this step to authorize
-    const step = selectedDoc.approvalWorkflow?.steps.find(s => s.stepNumber === stepNumber);
-    if (step) {
-      // Create the authorization record (This handles the step status update internally)
-      const updated = DatabaseService.authorizeDocumentSignatory(
-        selectedDoc.id,
-        step.roleName,
-        (step as any).assignedToEmail || 'test@example.com'
-      );
-      setSelectedDoc(updated);
+  // OTP states — Signer mode (after clicking Approve)
+  const [signerOtpInfo, setSignerOtpInfo] = useState<{reqId: string; otp: string; expiresAt: string} | null>(null);
+
+  const reload = () => {
+    if (currentRole === 'hr') {
+      setRequests(DatabaseService.getSignatureRequests());
+    } else {
+      setRequests(DatabaseService.getRequestsForSigner(currentRole as any));
     }
-    setComment('');
   };
 
-  const handleRejectStep = (stepNumber: number) => {
-    if (!selectedDoc) return;
-    const updated = DatabaseService.updateApprovalStatus(
-      selectedDoc.id,
-      stepNumber,
-      'correction_required',
-      comment || 'Rejected during review.',
-      'Suresh Kumar',
-      currentRole
-    );
-    setSelectedDoc(updated);
-    setComment('');
+  useEffect(() => {
+    reload();
+    return DatabaseService.subscribe(reload);
+  }, [currentRole]);
+
+  const selectedReq = requests.find(r => r.id === selectedReqId) ?? requests[0] ?? null;
+
+  // ── Signer: Approve (generates OTP)
+  const handleSignerApprove = (reqId: string) => {
+    try {
+      const updated = DatabaseService.signerApproveRequest(reqId);
+      setSignerOtpInfo({
+        reqId: updated.id,
+        otp: updated.otpCode!,
+        expiresAt: updated.otpExpiresAt!
+      });
+      reload();
+    } catch (e: any) {
+      alert(e.message);
+    }
+  };
+
+  // ── HR: Verify OTP entered
+  const handleHrOtpSuccess = (otp: string) => {
+    if (!hrOtpReqId) return;
+    try {
+      DatabaseService.hrVerifySignatureOtp(hrOtpReqId, otp);
+      setHrOtpReqId(null);
+      reload();
+    } catch (e: any) {
+      alert(e.message);
+    }
+  };
+
+  const statusBadge = (req: SignatureRequest) => {
+    if (req.authorizedAt) return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">✓ Authorized</span>;
+    if (req.status === 'approved') return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">⏳ OTP Ready</span>;
+    return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600">Pending</span>;
   };
 
   return (
     <div className="space-y-6 animate-fade-in pb-12">
-      
+
       {/* Header */}
       <div>
-        <h1 className="text-xl font-bold text-slate-900 font-heading">Document Approval</h1>
-        <p className="text-xs text-slate-500">Review and authorize documents before digital signing</p>
+        <h1 className="text-xl font-bold text-slate-900">
+          {currentRole === 'hr' ? 'Signature Requests' : 'My Signature Requests'}
+        </h1>
+        <p className="text-xs text-slate-500 mt-0.5">
+          {currentRole === 'hr'
+            ? 'Manage signature authorization requests sent to signers'
+            : 'Documents where your signature has been requested'}
+        </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* Left Document Selection List */}
-        <div className="lg:col-span-1 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-2">
-          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-2">Approval Queue</span>
-          
-          <div className="space-y-2">
-            {documents.map(doc => {
-              const isSelected = selectedDoc?.id === doc.id;
-              return (
+      {requests.length === 0 ? (
+        <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center">
+          <Send size={40} className="mx-auto text-slate-300 mb-4" />
+          <p className="font-bold text-slate-500">No signature requests yet</p>
+          <p className="text-xs text-slate-400 mt-1">
+            {currentRole === 'hr'
+              ? 'Open a document in the Signature Studio and click "Request Signature" to start'
+              : 'HR will send you a signature request when your authorization is needed'}
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+          {/* Left: Request List */}
+          <div className="lg:col-span-1 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-2">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">
+              Requests ({requests.length})
+            </span>
+            <div className="space-y-2 mt-2">
+              {requests.map(req => (
                 <button
-                  key={doc.id}
-                  onClick={() => setSelectedDoc(doc)}
+                  key={req.id}
+                  onClick={() => setSelectedReqId(req.id)}
                   className={`w-full text-left p-3 rounded-xl border transition-all ${
-                    isSelected ? 'bg-brand-50 border-brand-300 shadow-sm' : 'border-slate-200 hover:bg-slate-50'
+                    selectedReq?.id === req.id
+                      ? 'bg-indigo-50 border-indigo-300 shadow-sm'
+                      : 'border-slate-200 hover:bg-slate-50'
                   }`}
                 >
-                  <div className="flex items-center justify-between">
-                    <span className="font-mono font-bold text-xs text-brand-700">{doc.documentNumber}</span>
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold capitalize ${
-                      doc.status === 'signed' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
-                    }`}>
-                      {doc.status.replace('_', ' ')}
-                    </span>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-mono text-[10px] font-bold text-indigo-700">{req.documentNumber}</span>
+                    {statusBadge(req)}
                   </div>
-                  
-                    <div className="font-bold text-xs text-slate-900 mt-1 flex flex-col gap-1">
-                      <div className="truncate">{doc.title}</div>
-                      
-                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase ${doc.variableValues?.isUploaded === 'true' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-200 text-slate-700'}`}>
-                        {doc.variableValues?.isUploaded === 'true' ? 'Uploaded Document' : 'Template Document'}
-                      </span>
-
-                    </div>
-                  <p className="text-[11px] text-slate-500">{doc.personName} • {doc.personRole}</p>
+                  <div className="font-bold text-xs text-slate-900 truncate">{req.documentTitle}</div>
+                  <div className="text-[11px] text-slate-500 mt-0.5">
+                    {currentRole === 'hr' ? `→ ${req.signatoryName}` : `From: ${req.requestedBy}`}
+                  </div>
                 </button>
-              );
-            })}
+              ))}
+            </div>
           </div>
-        </div>
 
-        {/* Right Workflow Status Details */}
-        {selectedDoc && (
-          <div className="lg:col-span-2 space-y-6">
-            
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-                <div>
-                  <h3 className="text-base font-bold text-slate-900 font-heading">{selectedDoc.title}</h3>
-                  <p className="text-xs text-slate-500 font-mono flex items-center gap-2">
-                      <span>Ref: {selectedDoc.documentNumber}</span>
-                      <span>•</span>
-                      <span>Generated on {new Date(selectedDoc.generatedAt).toLocaleDateString()}</span>
-                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase ${selectedDoc.variableValues?.isUploaded === 'true' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-200 text-slate-700'}`}>
-                        {selectedDoc.variableValues?.isUploaded === 'true' ? 'Uploaded Document' : 'Template Document'}
-                      </span>
-                    </p>
-                </div>
-                <div className="flex items-center gap-3">
+          {/* Right: Detail */}
+          {selectedReq && (
+            <div className="lg:col-span-2 space-y-4">
+
+              {/* Document Card */}
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h2 className="text-base font-bold text-slate-900">{selectedReq.documentTitle}</h2>
+                    <p className="text-xs text-slate-500 font-mono mt-0.5">{selectedReq.documentNumber}</p>
+                  </div>
                   <button
-                    onClick={() => onNavigateToSignature(selectedDoc.id)}
-                    className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold transition-colors shadow-sm"
+                    onClick={() => onNavigateToSignature(selectedReq.documentId)}
+                    className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-700 text-white text-xs font-bold transition-colors"
                   >
+                    <Eye size={13} />
                     View Document
                   </button>
-                  <span className="px-3 py-1 rounded-full text-xs font-extrabold uppercase bg-brand-50 text-brand-700 border border-brand-200">
-                    {selectedDoc.status.replace('_', ' ')}
-                  </span>
+                </div>
+
+                {/* Signer info */}
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  <div className="bg-slate-50 rounded-xl p-3 border border-slate-200">
+                    <p className="text-slate-400 text-[10px] uppercase font-bold mb-1">Requested Signer</p>
+                    <p className="font-bold text-slate-800">{selectedReq.signatoryName}</p>
+                    <p className="text-slate-500 font-mono text-[11px] mt-0.5">{selectedReq.signatoryEmail}</p>
+                  </div>
+                  <div className="bg-slate-50 rounded-xl p-3 border border-slate-200">
+                    <p className="text-slate-400 text-[10px] uppercase font-bold mb-1">Requested By</p>
+                    <p className="font-bold text-slate-800">{selectedReq.requestedBy}</p>
+                    <p className="text-slate-500 text-[11px] mt-0.5">{new Date(selectedReq.requestedAt).toLocaleDateString()}</p>
+                  </div>
+                </div>
+
+                {/* Status Flow */}
+                <div className="border-t border-slate-100 pt-4 space-y-3">
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Authorization Status</p>
+
+                  {/* Step 1: Request Sent */}
+                  <div className="flex items-center gap-3 text-xs">
+                    <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center shrink-0">
+                      <CheckCircle2 size={13} className="text-white" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-slate-800">Signature Request Sent</p>
+                      <p className="text-slate-500">{new Date(selectedReq.requestedAt).toLocaleString()}</p>
+                    </div>
+                  </div>
+
+                  {/* Step 2: Signer Approved */}
+                  <div className="flex items-center gap-3 text-xs">
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${
+                      selectedReq.status === 'approved' || selectedReq.authorizedAt
+                        ? 'bg-emerald-500'
+                        : 'bg-slate-200'
+                    }`}>
+                      {selectedReq.status === 'approved' || selectedReq.authorizedAt
+                        ? <CheckCircle2 size={13} className="text-white" />
+                        : <Clock size={13} className="text-slate-400" />
+                      }
+                    </div>
+                    <div>
+                      <p className={`font-semibold ${selectedReq.status === 'approved' || selectedReq.authorizedAt ? 'text-slate-800' : 'text-slate-400'}`}>
+                        {selectedReq.signatoryName} Approved Signature
+                      </p>
+                      {selectedReq.otpGeneratedAt && (
+                        <p className="text-slate-500">{new Date(selectedReq.otpGeneratedAt).toLocaleString()}</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Step 3: OTP Verified */}
+                  <div className="flex items-center gap-3 text-xs">
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${
+                      selectedReq.authorizedAt ? 'bg-emerald-500' : 'bg-slate-200'
+                    }`}>
+                      {selectedReq.authorizedAt
+                        ? <CheckCircle2 size={13} className="text-white" />
+                        : <Lock size={13} className="text-slate-400" />
+                      }
+                    </div>
+                    <div>
+                      <p className={`font-semibold ${selectedReq.authorizedAt ? 'text-slate-800' : 'text-slate-400'}`}>
+                        OTP Verified — Signature Unlocked
+                      </p>
+                      {selectedReq.authorizedAt && (
+                        <p className="text-slate-500">{new Date(selectedReq.authorizedAt).toLocaleString()}</p>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              {/* Visual Approval Progress Pipeline */}
-              <div className="space-y-4">
-                {currentRole === 'hr' && (
-                  <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">Approval Required</span>
-                )}
-                
-                {/* Manager Authorized Documents View */}
-                {currentRole !== 'hr' && (
-                  <div className="p-5 bg-slate-50 border border-slate-200 rounded-xl mt-4">
-                    <div className="flex items-center justify-between mb-4">
-                      <p className="text-sm font-semibold text-slate-800">Authorization Status</p>
-                      <span className="px-2 py-1 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded uppercase">
-                        {selectedDoc.authorizations?.some(a => a.signatoryRole === currentRole) ? 'Authorized' : 'Pending Authorization'}
-                      </span>
-                    </div>
-                    
-                    <div className="space-y-3">
-                      {selectedDoc.authorizations?.filter(a => a.signatoryRole === currentRole).map(auth => (
-                        <div key={auth.id} className="text-xs text-slate-600 bg-white p-3 rounded-lg border border-slate-200">
-                          <div className="font-semibold text-slate-800 mb-1">✓ Approved by {auth.signatoryName}</div>
-                          <div className="text-[10px] text-slate-500">{new Date(auth.authorizedAt).toLocaleString()}</div>
-                          
-                          {auth.usedAt && (
-                            <div className="mt-3 pt-3 border-t border-slate-100">
-                              <div className="font-semibold text-slate-800 mb-1">✓ Signature Placed</div>
-                              <div className="text-[10px] text-slate-500">{new Date(auth.usedAt).toLocaleString()}</div>
-                              <div className="text-[10px] text-slate-500">Placed by HR</div>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
+              {/* Action Panel */}
+
+              {/* ── HR: Not yet approved by signer */}
+              {currentRole === 'hr' && !selectedReq.authorizedAt && selectedReq.status === 'pending' && (
+                <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Clock size={16} className="text-amber-600" />
+                    <p className="font-bold text-amber-800 text-sm">Waiting for {selectedReq.signatoryName}</p>
                   </div>
-                )}
+                  <p className="text-xs text-amber-700">
+                    {selectedReq.signatoryName} needs to open their Signature Requests portal, view the document, and click <strong>"Approve Signature"</strong> to generate an OTP.
+                    Once they share the OTP with you, click the button below.
+                  </p>
+                </div>
+              )}
 
-                {/* HR Detailed View */}
-                {currentRole === 'hr' && (
-                  <div className="space-y-3 mt-4">
-                    <p className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3">Required Authorizations</p>
-                    
-                    {selectedDoc.approvalWorkflow?.steps?.map((step) => {
-                      const auth = selectedDoc.authorizations?.find(a => a.signatoryRole === step.roleName);
-                      const isApproved = !!auth;
-                      
-                      return (
-                        <div key={step.stepNumber} className={`p-4 rounded-xl border transition-all ${
-                          isApproved ? 'bg-emerald-50/50 border-emerald-200' : 'bg-slate-50/50 border-slate-200'
-                        }`}>
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${
-                                isApproved ? 'bg-emerald-500 text-white' : 'bg-slate-400 text-white'
-                              }`}>
-                                {isApproved ? <CheckCircle2 size={16} /> : step.stepNumber}
-                              </div>
-                              <div>
-                                <div className="font-bold text-xs text-slate-900">{step.assignedToName}</div>
-                                <p className="text-[11px] text-slate-500">{step.roleName === 'siva_kumar' ? 'Managing Director' : 'Board of Director'}</p>
-                              </div>
-                            </div>
-
-                            {isApproved ? (
-                              <div className="text-right">
-                                <span className="px-2.5 py-1 rounded text-[10px] font-bold uppercase bg-emerald-100 text-emerald-800 flex items-center gap-1">
-                                  <CheckCircle2 size={12} /> Authorized
-                                </span>
-                                <div className="text-[9px] text-slate-500 mt-1">{new Date(auth.authorizedAt).toLocaleString()}</div>
-                              </div>
-                            ) : (
-                              <button
-                                onClick={() => initiateApproveStep(step.stepNumber)}
-                                className="px-3 py-1.5 rounded bg-[#0052cc] hover:bg-[#0047b3] text-white text-[11px] font-semibold transition-colors"
-                              >
-                                Send OTP to Authorize
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
+              {/* ── HR: Signer approved, OTP ready — enter it */}
+              {currentRole === 'hr' && !selectedReq.authorizedAt && selectedReq.status === 'approved' && (
+                <div className="bg-indigo-50 border border-indigo-200 rounded-2xl p-5 flex items-center justify-between gap-4">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <ShieldCheck size={16} className="text-indigo-600" />
+                      <p className="font-bold text-indigo-800 text-sm">OTP Ready — Enter to Unlock</p>
+                    </div>
+                    <p className="text-xs text-indigo-700">
+                      {selectedReq.signatoryName} has approved and generated an OTP. Ask them for the code and enter it below to unlock the signature.
+                    </p>
                   </div>
-                )}
-              </div>
+                  <button
+                    onClick={() => setHrOtpReqId(selectedReq.id)}
+                    className="shrink-0 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-colors shadow-sm"
+                  >
+                    Enter OTP
+                  </button>
+                </div>
+              )}
 
-              {/* Contextual Action Bar */}
-              <div className="mt-6 pt-4 border-t border-slate-100">
-                {currentRole === 'hr' ? (
-                  <>
-                    {selectedDoc.status === 'draft' && (
-                      <div className="flex items-center gap-3">
-                        <button className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-semibold transition-colors">Edit</button>
-                        <button className="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-lg text-sm font-semibold transition-colors">Send for Approval</button>
-                      </div>
-                    )}
-                    {selectedDoc.status === 'signature_authorized' && (
-                      <div className="p-4 bg-brand-50 rounded-xl border border-brand-200 flex items-center justify-between">
-                        <div className="text-sm text-brand-900 font-semibold">
-                          Approved! Ready for Signature Placement.
-                        </div>
-                        <button
-                          onClick={() => onNavigateToSignature(selectedDoc.id)}
-                          className="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-sm font-bold shadow-sm"
-                        >
-                          Open Digital Signature Center →
-                        </button>
-                      </div>
-                    )}
-                    {selectedDoc.status === 'signed' && (
-                      <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-200 flex items-center justify-between">
-                        <div className="text-sm text-emerald-900 font-semibold">
-                          Document Finalized & Signed
-                        </div>
-                        <button
-                          onClick={() => onNavigateToSignature(selectedDoc.id)}
-                          className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold shadow-sm flex items-center gap-2"
-                        >
-                          Download PDF
-                        </button>
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <>
-                    {selectedDoc.status === 'signed' && (
-                      <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-200 flex items-center justify-between">
-                        <div className="text-sm text-emerald-900 font-semibold">
-                          Document Finalized & Signed
-                        </div>
-                        <button
-                          onClick={() => onNavigateToSignature(selectedDoc.id)}
-                          className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold shadow-sm flex items-center gap-2"
-                        >
-                          Download PDF
-                        </button>
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
+              {/* ── HR: Authorized — go to signature studio */}
+              {currentRole === 'hr' && selectedReq.authorizedAt && (
+                <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 flex items-center justify-between gap-4">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <CheckCircle2 size={16} className="text-emerald-600" />
+                      <p className="font-bold text-emerald-800 text-sm">{selectedReq.signatoryName}'s Signature is Authorized</p>
+                    </div>
+                    <p className="text-xs text-emerald-700">
+                      You can now open the Signature Studio and drag {selectedReq.signatoryName}'s signature onto the document.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => onNavigateToSignature(selectedReq.documentId)}
+                    className="shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-colors shadow-sm"
+                  >
+                    Open Signature Studio <ChevronRight size={13} />
+                  </button>
+                </div>
+              )}
 
+              {/* ── Signer: Pending — Approve */}
+              {currentRole !== 'hr' && !selectedReq.authorizedAt && selectedReq.status === 'pending' && (
+                <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-4">
+                  <p className="text-sm font-bold text-slate-800">Action Required</p>
+                  <p className="text-xs text-slate-600">
+                    <strong>{selectedReq.requestedBy}</strong> has requested your signature authorization for this document.
+                    Please review the document and click <strong>Approve Signature</strong> if you agree.
+                  </p>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => onNavigateToSignature(selectedReq.documentId)}
+                      className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition-colors"
+                    >
+                      <Eye size={13} /> Review Document
+                    </button>
+                    <button
+                      onClick={() => handleSignerApprove(selectedReq.id)}
+                      className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-colors shadow-sm"
+                    >
+                      <ShieldCheck size={13} /> Approve Signature
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* ── Signer: OTP generated — show it */}
+              {currentRole !== 'hr' && !selectedReq.authorizedAt && selectedReq.status === 'approved' && selectedReq.otpCode && (
+                <div className="bg-emerald-50 border-2 border-emerald-300 rounded-2xl p-5 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 size={16} className="text-emerald-600" />
+                    <p className="font-bold text-emerald-800 text-sm">Signature Approved</p>
+                  </div>
+                  <p className="text-xs text-emerald-700">Share this OTP with HR to complete the authorization:</p>
+                  <div className="bg-white border-2 border-emerald-200 rounded-xl p-4 text-center">
+                    <p className="text-3xl font-black tracking-[0.35em] text-emerald-800 font-mono">{selectedReq.otpCode}</p>
+                  </div>
+                  <p className="text-[11px] text-emerald-600">
+                    This OTP expires at {new Date(selectedReq.otpExpiresAt!).toLocaleTimeString()}
+                  </p>
+                </div>
+              )}
+
+              {/* ── Signer: Done */}
+              {currentRole !== 'hr' && selectedReq.authorizedAt && (
+                <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 flex items-center gap-3">
+                  <CheckCircle2 size={20} className="text-emerald-600 shrink-0" />
+                  <div>
+                    <p className="font-bold text-emerald-800 text-sm">Signature Fully Authorized</p>
+                    <p className="text-xs text-emerald-600 mt-0.5">
+                      HR has verified the OTP and your signature is now available for placement on {selectedReq.documentTitle}.
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
+          )}
+        </div>
+      )}
 
-          </div>
-        )}
+      {/* HR OTP entry modal */}
+      {hrOtpReqId && (() => {
+        const req = requests.find(r => r.id === hrOtpReqId);
+        return (
+          <OtpVerificationModal
+            isOpen={true}
+            onClose={() => setHrOtpReqId(null)}
+            onSuccess={handleHrOtpSuccess}
+            title="Verify Signature Authorization"
+            mode="hr_enter_otp"
+            signerName={req?.signatoryName}
+            signerEmail={req?.signatoryEmail}
+          />
+        );
+      })()}
 
-      </div>
-
-      {/* OTP Modal */}
-      <OtpVerificationModal 
-        isOpen={showOtpModal}
-        onClose={() => {
-          setShowOtpModal(false);
-          setPendingApprovalStep(null);
-        }}
-        onSuccess={() => {
-          if (pendingApprovalStep !== null) {
-            handleApproveStep(pendingApprovalStep);
-            setShowOtpModal(false);
-            setPendingApprovalStep(null);
-          }
-        }}
-        title="Approve Document Stage"
-        description={`Please verify your identity with OTP to formally approve stage ${pendingApprovalStep} for ${selectedDoc?.title}.`}
-      />
-
+      {/* Signer OTP display (after they approve — show OTP they need to share) */}
+      {signerOtpInfo && (
+        <OtpVerificationModal
+          isOpen={true}
+          onClose={() => setSignerOtpInfo(null)}
+          onSuccess={() => setSignerOtpInfo(null)}
+          title="Your Authorization OTP"
+          mode="signer_approve"
+          otpToShow={signerOtpInfo.otp}
+          otpExpiresAt={signerOtpInfo.expiresAt}
+        />
+      )}
     </div>
   );
 };

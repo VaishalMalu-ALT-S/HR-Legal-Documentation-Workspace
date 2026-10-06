@@ -12,6 +12,7 @@ interface HeaderProps {
   onNavigate?: (tab: string, payload?: { documentId?: string; documentNumber?: string; templateId?: string; search?: string }) => void;
   currentRole: UserRole;
   onRoleChange: (role: UserRole) => void;
+  onExpireSession?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -19,7 +20,8 @@ export const Header: React.FC<HeaderProps> = ({
   activeTab = 'signature',
   onNavigate,
   currentRole,
-  onRoleChange
+  onRoleChange,
+  onExpireSession
 }) => {
   const [searchValue, setSearchValue] = useState('');
   const [showAppSwitcher, setShowAppSwitcher] = useState(false);
@@ -32,7 +34,7 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   return (
-    <header className="h-14 bg-white border-b border-[#ebecf0] px-4 flex items-center justify-between shrink-0 select-none z-40 relative">
+    <header className="h-10 bg-white border-b border-[#ebecf0] px-3 flex items-center justify-between shrink-0 select-none z-40 relative">
       {/* Left Section: App Switcher + Brand Logo + Functional Tabs */}
       <div className="flex items-center gap-2">
         {/* App Switcher 9-dots */}
@@ -93,17 +95,17 @@ export const Header: React.FC<HeaderProps> = ({
           <img
             src="/altslogo.png"
             alt="ALT-S Logo"
-            className="h-7 object-contain"
+            className="h-5 object-contain"
           />
           <div className="flex items-baseline gap-1.5">
-            <span className="font-extrabold text-[15px] text-[#172b4d] tracking-tight">
+            <span className="font-extrabold text-[13px] text-[#172b4d] tracking-tight">
               SmartDoc<span className="text-[#0052cc]">Sign</span>
             </span>
           </div>
         </div>
 
         {/* Primary Functional Tabs */}
-        <nav className="flex items-center gap-1 text-[13px] ml-1">
+        <nav className="flex items-center gap-1 text-[11px] ml-1">
           <button
             onClick={() => onNavigate && onNavigate('signature')}
             className={`relative px-3 py-1.5 rounded font-medium transition-colors ${
@@ -141,7 +143,7 @@ export const Header: React.FC<HeaderProps> = ({
       {/* Right Section: Search + New Doc Button + Profile */}
       <div className="flex items-center gap-2.5">
         {/* Search */}
-        <div className="relative w-44 md:w-56">
+        <div className="relative w-36 md:w-48">
           <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#6b778c]" />
           <input
             type="text"
@@ -149,7 +151,7 @@ export const Header: React.FC<HeaderProps> = ({
             value={searchValue}
             onChange={(e) => setSearchValue(e.target.value)}
             onKeyDown={handleSearchKeyDown}
-            className="w-full pl-8 pr-2.5 py-1.5 text-[12.5px] bg-[#fafbfc] border border-[#dfe1e6] rounded text-[#172b4d] placeholder-[#7a869a] focus:bg-white focus:border-[#4c9aff] focus:ring-1 focus:ring-[#4c9aff] outline-none transition-all"
+            className="w-full pl-8 pr-2.5 py-1 text-[11px] bg-[#fafbfc] border border-[#dfe1e6] rounded text-[#172b4d] placeholder-[#7a869a] focus:bg-white focus:border-[#4c9aff] focus:ring-1 focus:ring-[#4c9aff] outline-none transition-all"
           />
         </div>
 
@@ -157,7 +159,7 @@ export const Header: React.FC<HeaderProps> = ({
         {currentRole === 'hr' && (
           <button
             onClick={onOpenCreate}
-            className="bg-[#0052cc] hover:bg-[#0065ff] active:bg-[#0747a6] text-white text-[12.5px] font-semibold px-3 py-1.5 rounded flex items-center gap-1.5 shadow-xs transition-colors"
+            className="bg-[#0052cc] hover:bg-[#0065ff] active:bg-[#0747a6] text-white text-[11px] font-semibold px-2 py-1 rounded flex items-center gap-1.5 shadow-xs transition-colors"
           >
             <Plus size={14} />
             <span>New Document</span>
@@ -176,11 +178,11 @@ export const Header: React.FC<HeaderProps> = ({
             onClick={() => setShowProfileMenu(!showProfileMenu)}
             className="flex items-center gap-2 pl-2 border-l border-[#ebecf0] hover:opacity-80 transition-opacity"
           >
-            <div className="w-7 h-7 rounded-full bg-[#0052cc] text-white text-[11px] font-bold flex items-center justify-center shadow-xs">
+            <div className="w-6 h-6 rounded-full bg-[#0052cc] text-white text-[11px] font-bold flex items-center justify-center shadow-xs">
               {currentRole === 'siva_kumar' ? 'SK' : currentRole === 'uma_mageshwari' ? 'UM' : 'HR'}
             </div>
             <div className="hidden lg:flex flex-col text-left leading-tight">
-              <span className="text-[12px] font-bold text-[#172b4d]">
+              <span className="text-[11px] font-bold text-[#172b4d]">
                 {currentRole === 'siva_kumar' ? 'Siva Kumar' : currentRole === 'uma_mageshwari' ? 'Uma Mageshwari' : 'HR Admin'}
               </span>
               <span className="text-[10px] text-[#6b778c]">
@@ -208,6 +210,18 @@ export const Header: React.FC<HeaderProps> = ({
                   className="w-full text-left px-2 py-1.5 hover:bg-slate-50 rounded text-slate-700"
                 >
                   Document Builder
+                </button>
+              </div>
+              <div className="pt-2 mt-2 border-t border-slate-100 space-y-1">
+                <button
+                  onClick={() => {
+                    setShowProfileMenu(false);
+                    onExpireSession && onExpireSession();
+                  }}
+                  className="w-full text-left p-2 rounded hover:bg-amber-50 text-slate-700 hover:text-amber-700 transition-colors flex items-center justify-between"
+                >
+                  <span className="font-semibold">Lock Session</span>
+                  <span className="text-[10px] bg-amber-100 text-amber-700 px-1 rounded">UX Test</span>
                 </button>
               </div>
             </div>

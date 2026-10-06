@@ -9,6 +9,7 @@ ALT-S HR & Legal Documentation Workspace (SmartDocSign) is an enterprise-grade d
 ## Core Capabilities
 
 ### 1. Multi-Page Letterhead Editor
+
 - High-fidelity A4 multi-page document editor with page dimension boundaries (794px x 1123px).
 - Dynamic page operations including page insertion, page reordering, page deletion, and overflow splitting.
 - Built-in official ALT-S corporate letterhead (Headpad) on primary pages and header bands on subsequent pages.
@@ -17,6 +18,7 @@ ALT-S HR & Legal Documentation Workspace (SmartDocSign) is an enterprise-grade d
 - Dynamic fields bar for batch updating candidate names, designations, dates, and reference numbers across all pages simultaneously.
 
 ### 2. Sign and Stamp Studio
+
 - Multi-format document parser supporting PDF, DOCX (Microsoft Word), and raster image formats.
 - Real-time signature drawing canvas with touch and stylus input support.
 - Image-based signature upload with client-side transparent background removal and crop tools.
@@ -25,6 +27,7 @@ ALT-S HR & Legal Documentation Workspace (SmartDocSign) is an enterprise-grade d
 - Verified timestamp annotation generator.
 
 ### 3. Official Preloaded Company Templates
+
 - **Asset Acknowledgment Letter**: Hardware allocation table (Device ID, asset type, accessories) and return policy declaration.
 - **Appointment Letter - Solution Architect**: Full-time employment agreement with 4 discrete pages, comprehensive compensation breakdown (Annexure I), and mandatory document submission checklist (Annexure II).
 - **Contractor Letter of Offer**: Statement of Work (SOW) agreement featuring monthly professional fee terms, 1% TDS clauses, and Key Result Areas (KRAs).
@@ -32,6 +35,7 @@ ALT-S HR & Legal Documentation Workspace (SmartDocSign) is an enterprise-grade d
 - **Blank Letterhead**: Standard template with official letterhead and footer for arbitrary administrative correspondence.
 
 ### 4. Secure Document Vault and Cryptographic Verification
+
 - Centralized repository for drafts, pending approvals, and signed agreements.
 - SHA-256 cryptographic hash computation for tamper detection and validation.
 - Public Verification Portal allowing instant authenticity verification against the stored document ledger.
@@ -53,33 +57,35 @@ ALT-S HR & Legal Documentation Workspace (SmartDocSign) is an enterprise-grade d
 ## Getting Started
 
 ### Prerequisites
+
 - Node.js (v18.0.0 or higher recommended)
 - npm or yarn
 
 ### Installation
 
 1. Clone the repository:
+
    ```bash
    git clone https://github.com/VaishalMalu-ALT-S/HR-Legal-Documentation-Workspace.git
    cd HR-Legal-Documentation-Workspace
    ```
-
 2. Install dependencies:
+
    ```bash
    npm install
    ```
-
 3. Start the local development server:
+
    ```bash
    npm run dev
    ```
-
 4. Build for production:
+
    ```bash
    npm run build
    ```
-
 5. Preview production build locally:
+
    ```bash
    npm run preview
    ```

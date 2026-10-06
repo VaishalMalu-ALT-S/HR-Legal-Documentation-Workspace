@@ -2,8 +2,8 @@ import React, { useEffect, useState, useRef, useCallback } from 'react';
 import {
   Upload, Download, Pen, Move, X,
   RotateCcw, RotateCw, Crop, Sun, Contrast, Layers,
-  Eraser, ZoomIn, ZoomOut,
-  Settings, RefreshCw,
+  Eraser, ZoomIn, ZoomOut, Send, Plus, CheckCircle2,
+  Settings, RefreshCw, Eye,
   FolderOpen, Maximize2, Calendar, Stamp, Lock, Unlock
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
@@ -12,7 +12,7 @@ import * as mammoth from 'mammoth';
 import { getAltSCorporateStamp } from '../utils/stampGenerator';
 import { COMPANY_TEMPLATES } from '../data/templates';
 import { COMPANIES, CompanyBrand } from '../data/companies';
-import { SmartDocument } from '../types';
+import { SmartDocument, SignatureRequest } from '../types';
 import { DatabaseService } from '../services/dbService';
 
 /* ─── Types ─────────────────────────────────────────────────────────── */
@@ -212,6 +212,49 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
   const [docLoading, setDocLoading] = useState(false);
   const [_error, setError] = useState<string | null>(null);
 
+  // ── Request Signature dialog state
+  const [showReqSigDialog, setShowReqSigDialog] = useState(false);
+  const [reqSigSelection, setReqSigSelection] = useState<'siva_kumar' | 'uma_mageshwari' | 'both'>('siva_kumar');
+  const [reqSivaEmail, setReqSivaEmail] = useState('');
+  const [reqUmaEmail, setReqUmaEmail] = useState('');
+  const [reqSigSent, setReqSigSent] = useState(false);
+  // Track live signature requests for this document
+  const [docSigRequests, setDocSigRequests] = useState<SignatureRequest[]>([]);
+
+  useEffect(() => {
+    const reload = () => {
+      if (targetDoc?.id) {
+        setDocSigRequests(DatabaseService.getRequestsForDocument(targetDoc.id));
+      }
+    };
+    reload();
+    return DatabaseService.subscribe(reload);
+  }, [targetDoc?.id]);
+
+  useEffect(() => {
+    if (targetDoc?.variableValues?.uploadedImages) {
+      try {
+        const parsedPages = JSON.parse(targetDoc.variableValues.uploadedImages);
+        if (parsedPages && parsedPages.length > 0) {
+          setDocPages(parsedPages);
+          setHasUploadedDoc(true);
+          setDocName(targetDoc.title || 'Uploaded Document');
+        }
+      } catch (e) {
+        console.error("Failed to parse uploaded images", e);
+      }
+    } else if (targetDoc?.variableValues?.pages && targetDoc.variableValues.isUploaded) {
+      try {
+        const parsedPages = JSON.parse(targetDoc.variableValues.pages);
+        if (parsedPages && parsedPages.length > 0) {
+          setDocPages(parsedPages);
+          setHasUploadedDoc(true);
+          setDocName(targetDoc.title || 'Uploaded Document');
+        }
+      } catch (e) {}
+    }
+  }, [targetDoc]);
+
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>('alt_s');
   const selectedCompany = COMPANIES.find(c => c.id === selectedCompanyId) || COMPANIES[0];
 
@@ -221,6 +264,7 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
   const [cropModal, setCropModal] = useState<{ sigId: string; src: string } | null>(null);
   const [bgRemoving, setBgRemoving] = useState<string | null>(null);
   const [activeTool, setActiveTool] = useState<'select' | 'upload' | 'draw' | 'stamp' | 'date'>('select');
+  const [isPreviewMode, setIsPreviewMode] = useState(false);
 
   // Zoom
   const [zoom, setZoom] = useState(100);
@@ -576,22 +620,137 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
 
         {/* Quick Toolbar Action Buttons */}
         <div className="flex items-center gap-2">
-          {isApproved ? (
+          {currentRole === 'hr' && targetDoc && (
+            <button
+              onClick={() => { setShowReqSigDialog(true); setReqSigSent(false); }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold transition-colors shadow-sm"
+            >
+              <Send size={12} />
+              Request Signature
+            </button>
+          )}
+          <button
+            onClick={() => setIsPreviewMode(!isPreviewMode)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-[12px] font-semibold transition-colors shadow-xs border ${
+              isPreviewMode 
+                ? 'bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-200' 
+                : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+            }`}
+          >
+            <Eye size={14} />
+            <span>{isPreviewMode ? 'Exit Preview' : 'Preview'}</span>
+          </button>
+          {isApproved && (
             <button
               onClick={handleDownload}
-              className="bg-[#0052cc] hover:bg-[#0065ff] text-white text-[12px] font-semibold px-4 py-1.5 rounded shadow-xs flex items-center gap-1.5 transition-colors ml-1"
+              className="bg-[#0052cc] hover:bg-[#0065ff] text-white text-[12px] font-semibold px-4 py-1.5 rounded shadow-xs flex items-center gap-1.5 transition-colors"
             >
               <Download size={14} />
-              <span>Finish & Save</span>
+              <span>Finish &amp; Save</span>
             </button>
-          ) : (
-            <span className="text-[11px] font-bold text-rose-600 bg-rose-50 px-2 py-1 rounded border border-rose-200">
-              <Lock size={12} className="inline mr-1" />
-              Document Not Approved
-            </span>
           )}
         </div>
       </div>
+
+      {/* ─── Request Signature Dialog ─── */}
+      {showReqSigDialog && targetDoc && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+              <div className="flex items-center gap-2">
+                <Send size={18} className="text-indigo-600" />
+                <h3 className="font-bold text-slate-800">Request Signature</h3>
+              </div>
+              <button onClick={() => setShowReqSigDialog(false)} className="p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded-full transition-colors">
+                <X size={18} />
+              </button>
+            </div>
+
+            {reqSigSent ? (
+              <div className="p-6 text-center space-y-4">
+                <CheckCircle2 size={48} className="mx-auto text-emerald-500" />
+                <div>
+                  <p className="font-bold text-slate-900 text-lg">Request Sent!</p>
+                  <p className="text-sm text-slate-500 mt-1">
+                    {reqSigSelection === 'siva_kumar' ? 'Siva Kumar' :
+                     reqSigSelection === 'uma_mageshwari' ? 'Uma Mageshwari' : 'Both signers'}
+                    {' '}will see the request in their Signature Requests portal.
+                  </p>
+                </div>
+                <p className="text-xs text-slate-400 bg-slate-50 rounded-xl p-3">
+                  Once they approve, they'll generate an OTP. Ask them to share it with you, then enter it in the <strong>Signature Requests</strong> tab to unlock the signature.
+                </p>
+                <button onClick={() => setShowReqSigDialog(false)} className="w-full py-2.5 rounded-xl bg-slate-900 text-white font-bold text-sm">
+                  Close
+                </button>
+              </div>
+            ) : (
+              <div className="p-6 space-y-5">
+                <div>
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Who should sign this document?</p>
+                  <div className="space-y-2">
+                    {[
+                      { val: 'siva_kumar', label: 'Siva Kumar', subtitle: 'Managing Director' },
+                      { val: 'uma_mageshwari', label: 'Uma Mageshwari', subtitle: 'Director' },
+                      { val: 'both', label: 'Both Signatories', subtitle: 'Siva Kumar & Uma Mageshwari' }
+                    ].map(opt => (
+                      <label key={opt.val} className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${
+                        reqSigSelection === opt.val ? 'border-indigo-400 bg-indigo-50' : 'border-slate-200 hover:border-slate-300'
+                      }`}>
+                        <input type="radio" name="signer" value={opt.val} checked={reqSigSelection === opt.val}
+                          onChange={() => setReqSigSelection(opt.val as any)} className="accent-indigo-600" />
+                        <div>
+                          <p className="font-bold text-sm text-slate-800">{opt.label}</p>
+                          <p className="text-xs text-slate-500">{opt.subtitle}</p>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                {(reqSigSelection === 'siva_kumar' || reqSigSelection === 'both') && (
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Siva Kumar's Email</label>
+                    <input type="email" value={reqSivaEmail} onChange={e => setReqSivaEmail(e.target.value)}
+                      placeholder="siva@example.com"
+                      className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-400" />
+                  </div>
+                )}
+                {(reqSigSelection === 'uma_mageshwari' || reqSigSelection === 'both') && (
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Uma Mageshwari's Email</label>
+                    <input type="email" value={reqUmaEmail} onChange={e => setReqUmaEmail(e.target.value)}
+                      placeholder="uma@example.com"
+                      className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-400" />
+                  </div>
+                )}
+
+                <button
+                  onClick={() => {
+                    try {
+                      if (reqSigSelection === 'siva_kumar' || reqSigSelection === 'both') {
+                        if (!reqSivaEmail.trim()) { alert("Please enter Siva Kumar's email."); return; }
+                        DatabaseService.createSignatureRequest(targetDoc.id, 'siva_kumar', reqSivaEmail.trim(), 'HR Admin');
+                      }
+                      if (reqSigSelection === 'uma_mageshwari' || reqSigSelection === 'both') {
+                        if (!reqUmaEmail.trim()) { alert("Please enter Uma Mageshwari's email."); return; }
+                        DatabaseService.createSignatureRequest(targetDoc.id, 'uma_mageshwari', reqUmaEmail.trim(), 'HR Admin');
+                      }
+                      setReqSigSent(true);
+                    } catch (e) {
+                      alert('Error: ' + (e as any).message);
+                    }
+                  }}
+                  className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm flex items-center justify-center gap-2 transition-colors"
+                >
+                  <Send size={15} />
+                  Send Signature Request
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ─── FULLY SCROLLABLE DOCUMENT CANVAS ─── */}
       <div
@@ -700,7 +859,7 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
                 height: sig.h,
                 transform: `rotate(${sig.rotation}deg)`,
                 transformOrigin: 'center center',
-                outline: sig.selected ? '2px solid #0052cc' : 'none',
+                outline: (sig.selected && !isPreviewMode) ? '2px solid #0052cc' : 'none',
                 outlineOffset: 3,
               }}
               className="group"
@@ -739,7 +898,7 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
         </div>
 
         {/* ── Signature Adjustment Inspector (Opens beside selected sig) ── */}
-        {selectedSig && (
+        {selectedSig && !isPreviewMode && (
           <div className="fixed top-28 right-6 w-68 bg-white/95 backdrop-blur-md rounded-xl shadow-[0_8px_30px_rgba(9,30,66,0.18)] border border-[#dfe1e6] p-3.5 z-40 space-y-3">
             <div className="flex items-center justify-between border-b border-[#ebecf0] pb-2">
               <div className="flex items-center gap-1.5">
@@ -894,19 +1053,19 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
               {currentRole === 'hr' && (
                 <button
                   onClick={() => {
-                    const isAuth = (targetDoc?.authorizations?.some(a => a.signatoryRole === 'siva_kumar' || a.signatoryRole === 'HR Manager' || a.signatoryRole === 'Authorized Signatory' || a.signatoryName === 'Siva Kumar') || targetDoc?.status === 'signature_authorized');
+                    const isAuth = targetDoc?.authorizations?.some(a => (a.signatoryRole === 'siva_kumar' || a.signatoryRole === 'Authorized Signatory' || a.signatoryName === 'Siva Kumar') && !a.usedAt);
                     if (!isAuth) return;
                     addSig('/sign1.jpg', 'signature', 'siva_kumar');
                   }}
-                  disabled={!(targetDoc?.authorizations?.some(a => a.signatoryRole === 'siva_kumar' || a.signatoryRole === 'HR Manager' || a.signatoryRole === 'Authorized Signatory' || a.signatoryName === 'Siva Kumar') || targetDoc?.status === 'signature_authorized')}
+                  disabled={!(targetDoc?.authorizations?.some(a => (a.signatoryRole === 'siva_kumar' || a.signatoryRole === 'Authorized Signatory' || a.signatoryName === 'Siva Kumar') && !a.usedAt))}
                   className={`flex items-center gap-1 px-2.5 py-1 rounded-lg font-semibold text-[11.5px] transition-colors ${
-                    !(targetDoc?.authorizations?.some(a => a.signatoryRole === 'siva_kumar' || a.signatoryRole === 'HR Manager' || a.signatoryRole === 'Authorized Signatory' || a.signatoryName === 'Siva Kumar') || targetDoc?.status === 'signature_authorized')
+                    !(targetDoc?.authorizations?.some(a => (a.signatoryRole === 'siva_kumar' || a.signatoryRole === 'Authorized Signatory' || a.signatoryName === 'Siva Kumar') && !a.usedAt))
                       ? 'text-slate-400 bg-slate-50 cursor-not-allowed border border-slate-200' 
                       : 'text-[#172b4d] hover:bg-[#ebecf0]'
                   }`}
-                  title={!(targetDoc?.authorizations?.some(a => a.signatoryRole === 'siva_kumar' || a.signatoryRole === 'HR Manager' || a.signatoryRole === 'Authorized Signatory' || a.signatoryName === 'Siva Kumar') || targetDoc?.status === 'signature_authorized') ? "Locked: Awaiting Manager Approval" : "Place Siva Kumar Signature"}
+                  title={!(targetDoc?.authorizations?.some(a => (a.signatoryRole === 'siva_kumar' || a.signatoryRole === 'Authorized Signatory' || a.signatoryName === 'Siva Kumar') && !a.usedAt)) ? "Locked: Awaiting Manager Approval or Signature Already Used" : "Place Siva Kumar Signature"}
                 >
-                  {!(targetDoc?.authorizations?.some(a => a.signatoryRole === 'siva_kumar' || a.signatoryRole === 'HR Manager' || a.signatoryRole === 'Authorized Signatory' || a.signatoryName === 'Siva Kumar') || targetDoc?.status === 'signature_authorized') ? <Lock size={12} className="text-rose-500" /> : <Pen size={14} className="text-[#0052cc]" />}
+                  {!(targetDoc?.authorizations?.some(a => (a.signatoryRole === 'siva_kumar' || a.signatoryRole === 'Authorized Signatory' || a.signatoryName === 'Siva Kumar') && !a.usedAt)) ? <Lock size={12} className="text-rose-500" /> : <Pen size={14} className="text-[#0052cc]" />}
                   <span>Siva Kumar</span>
                 </button>
               )}
@@ -915,19 +1074,19 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
               {currentRole === 'hr' && (
                 <button
                   onClick={() => {
-                    const isAuth = (targetDoc?.authorizations?.some(a => a.signatoryRole === 'uma_mageshwari' || a.signatoryRole === 'Authorized Signatory' || a.signatoryName === 'Uma Mageshwari') || targetDoc?.status === 'signature_authorized');
+                    const isAuth = targetDoc?.authorizations?.some(a => (a.signatoryRole === 'uma_mageshwari' || a.signatoryRole === 'Authorized Signatory' || a.signatoryName === 'Uma Mageshwari') && !a.usedAt);
                     if (!isAuth) return;
                     addSig('/sign2.jpg', 'signature', 'uma_mageshwari');
                   }}
-                  disabled={!(targetDoc?.authorizations?.some(a => a.signatoryRole === 'uma_mageshwari' || a.signatoryRole === 'Authorized Signatory' || a.signatoryName === 'Uma Mageshwari') || targetDoc?.status === 'signature_authorized')}
+                  disabled={!(targetDoc?.authorizations?.some(a => (a.signatoryRole === 'uma_mageshwari' || a.signatoryRole === 'Authorized Signatory' || a.signatoryName === 'Uma Mageshwari') && !a.usedAt))}
                   className={`flex items-center gap-1 px-2.5 py-1 rounded-lg font-semibold text-[11.5px] transition-colors ${
-                    !(targetDoc?.authorizations?.some(a => a.signatoryRole === 'uma_mageshwari' || a.signatoryRole === 'Authorized Signatory' || a.signatoryName === 'Uma Mageshwari') || targetDoc?.status === 'signature_authorized')
+                    !(targetDoc?.authorizations?.some(a => (a.signatoryRole === 'uma_mageshwari' || a.signatoryRole === 'Authorized Signatory' || a.signatoryName === 'Uma Mageshwari') && !a.usedAt))
                       ? 'text-slate-400 bg-slate-50 cursor-not-allowed border border-slate-200' 
                       : 'text-[#172b4d] hover:bg-[#ebecf0]'
                   }`}
-                  title={!(targetDoc?.authorizations?.some(a => a.signatoryRole === 'uma_mageshwari' || a.signatoryRole === 'Authorized Signatory' || a.signatoryName === 'Uma Mageshwari') || targetDoc?.status === 'signature_authorized') ? "Locked: Awaiting Manager Approval" : "Place Uma Mageshwari Signature"}
+                  title={!(targetDoc?.authorizations?.some(a => (a.signatoryRole === 'uma_mageshwari' || a.signatoryRole === 'Authorized Signatory' || a.signatoryName === 'Uma Mageshwari') && !a.usedAt)) ? "Locked: Awaiting Manager Approval or Signature Already Used" : "Place Uma Mageshwari Signature"}
                 >
-                  {!(targetDoc?.authorizations?.some(a => a.signatoryRole === 'uma_mageshwari' || a.signatoryRole === 'Authorized Signatory' || a.signatoryName === 'Uma Mageshwari') || targetDoc?.status === 'signature_authorized') ? <Lock size={12} className="text-rose-500" /> : <Pen size={14} className="text-[#0052cc]" />}
+                  {!(targetDoc?.authorizations?.some(a => (a.signatoryRole === 'uma_mageshwari' || a.signatoryRole === 'Authorized Signatory' || a.signatoryName === 'Uma Mageshwari') && !a.usedAt)) ? <Lock size={12} className="text-rose-500" /> : <Pen size={14} className="text-[#0052cc]" />}
                   <span>Uma Mageshwari</span>
                 </button>
               )}

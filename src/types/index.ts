@@ -141,6 +141,30 @@ export interface DocumentAuthorization {
   usedByRole?: string; // e.g. 'hr'
 }
 
+// ── Signature Request ──────────────────────────────────────────────
+// HR creates this to request signature authorization from Siva/Uma.
+// The signer views the document, clicks Approve, gets an OTP.
+// HR enters the OTP to unlock the signature in the Signature Studio.
+export interface SignatureRequest {
+  id: string;
+  documentId: string;
+  documentTitle: string;
+  documentNumber: string;
+  signatoryRole: 'siva_kumar' | 'uma_mageshwari';
+  signatoryName: string;
+  signatoryEmail: string;       // email HR entered
+  requestedBy: string;          // HR Admin
+  requestedAt: string;
+  status: 'pending' | 'viewed' | 'approved' | 'rejected';
+  // OTP fields — generated when signer clicks "Approve Signature"
+  otpCode?: string;             // 6-digit code stored here (demo mode, no real email)
+  otpGeneratedAt?: string;
+  otpExpiresAt?: string;        // 10 min expiry
+  otpVerifiedAt?: string;       // set when HR verifies successfully
+  // Set after HR OTP verification succeeds
+  authorizedAt?: string;
+}
+
 export interface DocumentApprovalWorkflow {
   id: string;
   documentId: string;

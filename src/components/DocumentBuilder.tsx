@@ -32,6 +32,7 @@ interface StampItem {
 
 interface DocumentBuilderProps {
   initialTemplateId?: string;
+  initialDocId?: string;
   onSaveSuccess?: () => void;
 }
 
@@ -46,11 +47,29 @@ interface DynamicVariables {
 
 export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
   initialTemplateId = 'asset_acknowledgment',
+  initialDocId,
   onSaveSuccess
 }) => {
   const [creationMode, setCreationMode] = useState<'template'|'upload'>('template');
   
 
+
+  // Load from initialDocId if provided
+  useEffect(() => {
+    if (initialDocId) {
+      const doc = DatabaseService.getDocuments().find(d => d.id === initialDocId);
+      if (doc && doc.variableValues) {
+        setDocumentTitle(doc.title);
+        try {
+          if (doc.variableValues.pages) setPages(JSON.parse(doc.variableValues.pages));
+          if (doc.variableValues.stamps) setStamps(JSON.parse(doc.variableValues.stamps));
+          if (doc.variableValues.variables) setVariables(JSON.parse(doc.variableValues.variables));
+        } catch (e) {
+          console.error("Error parsing document data", e);
+        }
+      }
+    }
+  }, [initialDocId]);
 
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>('alt_s');
   const selectedCompany = COMPANIES.find(c => c.id === selectedCompanyId) || COMPANIES[0];
@@ -217,17 +236,15 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
     const activeEl = editorRefs.current[activePageIndex] || editorRefs.current[0];
     if (activeEl) {
       activeEl.focus();
-      const selection = window.getSelection();
-      if (selection && selection.rangeCount > 0 && !selection.isCollapsed) {
-        const span = document.createElement('span');
-        span.style.fontSize = size;
-        const range = selection.getRangeAt(0);
-        span.appendChild(range.extractContents());
-        range.insertNode(span);
-        handlePageInput(activePageIndex);
-      } else {
-        execCmd('fontSize', '3');
+      document.execCommand('fontSize', false, '7');
+      const fontTags = activeEl.getElementsByTagName('font');
+      for (let i = fontTags.length - 1; i >= 0; i--) {
+        if (fontTags[i].getAttribute('size') === '7') {
+          fontTags[i].removeAttribute('size');
+          fontTags[i].style.fontSize = size;
+        }
       }
+      handlePageInput(activePageIndex);
     }
   };
 
@@ -581,16 +598,17 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
   const handleSaveToVault = async () => {
     try {
       const fullHtml = pages.join('\n<!-- page-break -->\n');
-      await DatabaseService.createDocument({
+      
+      const docData = {
         title: documentTitle,
-        category: (selectedTemplateId === 'asset_acknowledgment' ? 'acknowledgement_form' : 'appointment_letter') as DocumentCategory,
+        category: (selectedTemplateId === 'asset_acknowledgment' ? 'acknowledgement_form' : 'appointment_letter') as any,
         companyId: selectedCompanyId,
         personName: variables.recipientName || 'Employee / Consultant',
         personEmail: 'hr@alt-s.com',
         personRole: variables.designation || 'Candidate',
         templateVersionId: selectedTemplateId,
         templateVersionNumber: '1.0',
-        status: 'draft',
+        status: 'draft' as const,
         variableValues: {
           content: fullHtml,
           pages: JSON.stringify(pages),
@@ -600,17 +618,27 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
         generatedAt: new Date().toISOString(),
         generatedBy: 'HR Admin',
         approvalWorkflow: {
-          // eslint-disable-next-line react-hooks/purity
           id: `wf_${Date.now()}`,
-          // eslint-disable-next-line react-hooks/purity
           documentId: `doc_${Date.now()}`,
           currentStepIndex: 0,
           steps: [],
-          status: 'in_progress'
+          status: 'in_progress' as const
         }
-      });
+      };
+
+      if (initialDocId) {
+        const existingDocs = DatabaseService.getDocuments();
+        const docIndex = existingDocs.findIndex(d => d.id === initialDocId);
+        if (docIndex >= 0) {
+            existingDocs[docIndex] = { ...existingDocs[docIndex], ...docData, status: 'draft' };
+            localStorage.setItem('smartdoc_documents_v1', JSON.stringify(existingDocs));
+        }
+      } else {
+        await DatabaseService.createDocument(docData as any);
+      }
+      
       notifyUser(`Saved "${documentTitle}" (${pages.length} Pages) to Vault!`);
-      onSaveSuccess?.();
+      if (onSaveSuccess) onSaveSuccess();
     } catch (err) {
       console.error('Save error:', err);
       notifyUser('Document saved to local workspace cache.');
@@ -622,19 +650,20 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
   }
 
   return (
-    <div className="h-full flex flex-col bg-[#f1f3f6] overflow-hidden font-sans text-slate-900 select-none">
-      {/* ── Top Bar: Template Selector & Actions ── */}
-      <div className="h-14 bg-white border-b border-slate-200 px-4 flex items-center justify-between shrink-0 shadow-sm z-20">
-        <div className="flex items-center space-x-3">
-          <div className="flex items-center space-x-2">
-            <LayoutTemplate className="w-5 h-5 text-indigo-600" />
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Template:</span>
+    <div className="h-full flex flex-col bg-[#f1f3f6] overflow-hidden font-sans text-slate-900 select-none min-w-0">
+                                    {/* ── Top Bar: Actions ── */}
+      <div className="bg-white border-b border-slate-200 px-3 py-2 flex flex-wrap items-center justify-between gap-2 shrink-0 shadow-sm z-20 w-full min-h-[44px]">
+        <div className="flex items-center gap-1 min-w-0 shrink-0">
+          <div className="flex items-center space-x-1 shrink-0">
+            <LayoutTemplate className="w-3.5 h-3.5 text-indigo-600" />
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Template:</span>
           </div>
 
           <select
             value={selectedTemplateId}
             onChange={(e) => setSelectedTemplateId(e.target.value)}
-            className="text-xs font-semibold bg-slate-100 hover:bg-slate-200/70 text-slate-800 rounded-md px-3 py-1.5 border border-slate-300 outline-none cursor-pointer max-w-[280px]"
+            className="text-[11px] font-semibold bg-slate-100 hover:bg-slate-200/70 text-slate-800 rounded px-1.5 py-0.5 border border-slate-300 outline-none cursor-pointer w-24 md:w-32 lg:w-40 xl:w-48 shrink-0 truncate"
+            title="Template Selector"
           >
             {COMPANY_TEMPLATES.map(tpl => (
               <option key={tpl.id} value={tpl.id}>
@@ -643,88 +672,90 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
             ))}
           </select>
           
-          <div className="flex items-center space-x-2 border-l border-slate-200 pl-3 ml-2">
-            <button
-              onClick={() => setCreationMode('upload')}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[11px] font-bold rounded-md border border-indigo-200 shadow-sm transition-colors"
-              title="Upload existing Document"
-            >
-              <UploadCloud size={14} />
-              <span>Upload Document</span>
-            </button>
-          </div>
+          <div className="w-px h-4 bg-slate-200 mx-0.5 hidden sm:block"></div>
+          
+          <button
+            onClick={() => setCreationMode('upload')}
+            className="flex items-center gap-1 px-1.5 py-0.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[11px] font-bold rounded border border-indigo-200 shrink-0"
+            title="Upload Document"
+          >
+            <UploadCloud size={12} />
+            <span>Upload</span>
+          </button>
 
           <input
             type="text"
             value={documentTitle}
             onChange={(e) => setDocumentTitle(e.target.value)}
-            className="text-xs font-bold text-slate-700 bg-transparent border-b border-dashed border-slate-300 focus:border-indigo-500 px-2 py-1 outline-none w-56"
+            className="text-[11px] font-bold text-slate-700 bg-transparent border-b border-dashed border-slate-300 focus:border-indigo-500 px-1 py-0.5 outline-none w-20 md:w-28 lg:w-36 shrink-0 truncate"
             title="Click to rename document"
           />
 
           <button
             onClick={() => setShowVarDrawer(!showVarDrawer)}
-            className={`flex items-center space-x-1.5 text-xs font-semibold px-2.5 py-1.5 rounded border transition-colors ${
+            className={`flex items-center space-x-1 text-[11px] font-semibold px-1.5 py-0.5 rounded border shrink-0 ${
               showVarDrawer ? 'bg-indigo-50 border-indigo-300 text-indigo-700' : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'
             }`}
           >
-            <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
-            <span>Dynamic Fields ({variables.recipientName ? 'Active' : 'Fill'})</span>
+            <Sparkles className="w-3 h-3 text-indigo-600" />
+            <span className="hidden lg:inline">Dynamic Fields ({variables.recipientName ? 'Active' : 'Fill'})</span>
+            <span className="inline lg:hidden">Fields</span>
           </button>
         </div>
 
         {/* Right Actions */}
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center gap-1 shrink-0">
           <button
             onClick={() => setDrawModalOpen(true)}
-            className="flex items-center space-x-1.5 text-xs font-semibold bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 px-3 py-1.5 rounded shadow-sm active:scale-95 transition-all"
+            className="flex items-center space-x-1 text-[11px] font-semibold bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 px-1.5 py-0.5 rounded active:scale-95 transition-all shrink-0"
+            title="Draw Signature"
           >
-            <PenTool className="w-3.5 h-3.5 text-indigo-600" />
-            <span>Draw Sign</span>
+            <PenTool className="w-3 h-3 text-indigo-600" />
+            <span>Sign</span>
           </button>
 
           <button
             onClick={addOfficialCorporateStamp}
-            className="flex items-center space-x-1.5 text-xs font-semibold bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 px-3 py-1.5 rounded shadow-sm active:scale-95 transition-all"
+            className="flex items-center space-x-1 text-[11px] font-semibold bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 px-1.5 py-0.5 rounded active:scale-95 transition-all shrink-0"
+            title="Add Corporate Seal"
           >
-            <StampIcon className="w-3.5 h-3.5 text-blue-700" />
-            <span>Corporate Seal</span>
+            <StampIcon className="w-3 h-3 text-blue-700" />
+            <span>Seal</span>
           </button>
 
           <button
             onClick={() => addNewPage(pages.length - 1)}
-            className="flex items-center space-x-1.5 text-xs font-semibold bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 px-3 py-1.5 rounded shadow-sm active:scale-95 transition-all"
-            title="Add a new blank A4 page at the end of the document"
+            className="flex items-center space-x-1 text-[11px] font-semibold bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 px-1.5 py-0.5 rounded active:scale-95 transition-all shrink-0"
+            title="Add a new blank A4 page"
           >
-            <Plus className="w-3.5 h-3.5 text-emerald-600" />
-            <span>+ Add Page</span>
+            <Plus className="w-3 h-3 text-emerald-600" />
+            <span>Add Page</span>
           </button>
 
           <button
             onClick={handleSaveToVault}
-            className="flex items-center space-x-1.5 text-xs font-semibold bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 px-3 py-1.5 rounded shadow-sm active:scale-95 transition-all"
+            className="flex items-center space-x-1 text-[11px] font-semibold bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 px-1.5 py-0.5 rounded active:scale-95 transition-all shrink-0"
+            title="Save Document"
           >
-            <Save className="w-3.5 h-3.5 text-slate-600" />
+            <Save className="w-3 h-3 text-slate-600" />
             <span>Save</span>
           </button>
 
           <button
-            onClick={() => {
-              window.print();
-            }}
-            className="flex items-center space-x-1.5 text-xs font-semibold bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 px-3 py-1.5 rounded shadow-sm active:scale-95 transition-all"
+            onClick={() => window.print()}
+            className="flex items-center space-x-1 text-[11px] font-semibold bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 px-1.5 py-0.5 rounded active:scale-95 transition-all shrink-0"
             title="Direct Print Document"
           >
-            <Printer className="w-3.5 h-3.5 text-slate-600" />
-            <span>Print</span>
+            <Printer className="w-3 h-3 text-slate-600" />
           </button>
 
           <button
             onClick={handleExportPdf}
             disabled={isExporting}
-            className="flex items-center space-x-1.5 text-xs font-bold bg-[#0052cc] hover:bg-[#0047b3] text-white px-3.5 py-1.5 rounded shadow active:scale-95 transition-all disabled:opacity-50"
+            className="flex items-center space-x-1 text-[11px] font-bold bg-[#0052cc] hover:bg-[#0047b3] text-white px-2 py-0.5 rounded shadow-sm active:scale-95 transition-all disabled:opacity-50 shrink-0 ml-1"
+            title="Export PDF"
           >
-            <Download className="w-3.5 h-3.5" />
+            <Download className="w-3 h-3" />
             <span>{isExporting ? 'Exporting...' : 'Export PDF'}</span>
           </button>
         </div>
@@ -732,322 +763,143 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
 
       {/* ── Dynamic Fields Quick-Fill Drawer (Collapsible) ── */}
       {showVarDrawer && (
-        <div className="bg-indigo-900/95 text-white px-6 py-3 border-b border-indigo-800 shadow-lg flex items-center justify-between z-20 transition-all text-xs animate-in slide-in-from-top duration-150">
-          <div className="flex items-center space-x-4 flex-wrap gap-y-2">
-            <div className="flex items-center space-x-1.5">
+        <div className="bg-indigo-900/95 text-white px-3 py-1.5 border-b border-indigo-800 shadow-sm flex items-center justify-between z-20 transition-all text-[11px] animate-in slide-in-from-top duration-150 overflow-x-auto no-scrollbar gap-2 min-w-0">
+          <div className="flex items-center gap-2 shrink-0 min-w-0">
+            <div className="flex items-center space-x-1 shrink-0">
               <span className="font-bold text-indigo-200">Candidate / Recipient:</span>
-              <input
-                type="text"
-                value={variables.recipientName}
-                onChange={e => setVariables({ ...variables, recipientName: e.target.value })}
-                placeholder="e.g. Vaishal Malu"
-                className="bg-indigo-950/80 border border-indigo-700 rounded px-2 py-1 text-white text-xs outline-none focus:border-indigo-400 w-36"
-              />
+              <input type="text" value={variables.recipientName} onChange={e => setVariables({ ...variables, recipientName: e.target.value })} placeholder="e.g. Vaishal Malu" className="bg-indigo-950/80 border border-indigo-700 rounded px-1.5 py-0.5 text-white text-[11px] outline-none focus:border-indigo-400 w-24 md:w-32" />
             </div>
-
-            <div className="flex items-center space-x-1.5">
+            <div className="flex items-center space-x-1 shrink-0">
               <span className="font-bold text-indigo-200">Designation:</span>
-              <input
-                type="text"
-                value={variables.designation}
-                onChange={e => setVariables({ ...variables, designation: e.target.value })}
-                placeholder="e.g. Solution Architect"
-                className="bg-indigo-950/80 border border-indigo-700 rounded px-2 py-1 text-white text-xs outline-none focus:border-indigo-400 w-44"
-              />
+              <input type="text" value={variables.designation} onChange={e => setVariables({ ...variables, designation: e.target.value })} placeholder="e.g. Solution Architect" className="bg-indigo-950/80 border border-indigo-700 rounded px-1.5 py-0.5 text-white text-[11px] outline-none focus:border-indigo-400 w-24 md:w-32" />
             </div>
-
-            <div className="flex items-center space-x-1.5">
+            <div className="flex items-center space-x-1 shrink-0">
               <span className="font-bold text-indigo-200">Date:</span>
-              <input
-                type="text"
-                value={variables.dateStr}
-                onChange={e => setVariables({ ...variables, dateStr: e.target.value })}
-                placeholder="e.g. 10-08-2026"
-                className="bg-indigo-950/80 border border-indigo-700 rounded px-2 py-1 text-white text-xs outline-none focus:border-indigo-400 w-28"
-              />
+              <input type="text" value={variables.dateStr} onChange={e => setVariables({ ...variables, dateStr: e.target.value })} placeholder="e.g. 10-08-2026" className="bg-indigo-950/80 border border-indigo-700 rounded px-1.5 py-0.5 text-white text-[11px] outline-none focus:border-indigo-400 w-20" />
             </div>
-
-            <div className="flex items-center space-x-1.5">
+            <div className="flex items-center space-x-1 shrink-0">
               <span className="font-bold text-indigo-200">Ref No:</span>
-              <input
-                type="text"
-                value={variables.refNo}
-                onChange={e => setVariables({ ...variables, refNo: e.target.value })}
-                placeholder="ALTS/DOC/2026/08"
-                className="bg-indigo-950/80 border border-indigo-700 rounded px-2 py-1 text-white text-xs outline-none focus:border-indigo-400 w-32"
-              />
+              <input type="text" value={variables.refNo} onChange={e => setVariables({ ...variables, refNo: e.target.value })} placeholder="ALTS/DOC/2026/08" className="bg-indigo-950/80 border border-indigo-700 rounded px-1.5 py-0.5 text-white text-[11px] outline-none focus:border-indigo-400 w-24" />
             </div>
           </div>
-
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={applyDynamicVariables}
-              className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-3 py-1.5 rounded shadow text-xs transition-colors flex items-center space-x-1"
-            >
-              <Check className="w-3.5 h-3.5" />
-              <span>Apply to All Pages</span>
+          <div className="flex items-center space-x-1 shrink-0">
+            <button onClick={applyDynamicVariables} className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-2 py-1 rounded shadow-sm text-[11px] transition-colors flex items-center space-x-1">
+              <Check className="w-3 h-3" />
+              <span className="hidden sm:inline">Apply to All</span>
             </button>
-            <button
-              onClick={() => setShowVarDrawer(false)}
-              className="text-indigo-300 hover:text-white p-1"
-            >
-              <X className="w-4 h-4" />
+            <button onClick={() => setShowVarDrawer(false)} className="text-indigo-300 hover:text-white p-0.5">
+              <X className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
       )}
 
       {/* ── Word-Style Formatting Toolbar ── */}
-      <div className="bg-white border-b border-slate-200 px-4 py-1.5 flex items-center flex-wrap gap-1.5 text-slate-700 text-xs shadow-sm z-10">
-        {/* Font Family */}
-        <select
-          value={fontFamily}
-          onChange={(e) => handleFontFamilyChange(e.target.value)}
-          className="border border-slate-300 rounded px-2 py-1 bg-white text-xs hover:border-slate-400 focus:outline-none focus:border-indigo-500"
-          title="Font Family"
-        >
-          <option value="'Calibri', Arial, sans-serif">Calibri (Company Std)</option>
-          <option value="'Arial', sans-serif">Arial</option>
-          <option value="'Inter', sans-serif">Inter</option>
-          <option value="'Times New Roman', serif">Times New Roman</option>
-          <option value="'Georgia', serif">Georgia</option>
-          <option value="'Courier New', monospace">Courier New</option>
-        </select>
+      <div className="bg-white border-b border-slate-200 px-3 py-2 flex flex-wrap items-center gap-3 text-slate-700 text-[11px] shadow-sm z-10 w-full min-h-[44px]">
+        
+        <div className="flex items-center gap-1 shrink-0">
+          {/* TEXT GROUP */}
+          <div className="flex items-center gap-0.5 border border-slate-200 rounded p-0.5 bg-slate-50/50 shrink-0">
+            <select value={fontFamily} onChange={(e) => handleFontFamilyChange(e.target.value)} className="border border-slate-300 rounded px-1 py-0.5 bg-white text-[11px] hover:border-slate-400 focus:outline-none focus:border-indigo-500 w-20 xl:w-24 truncate" title="Font Family">
+              <option value="'Calibri', Arial, sans-serif">Calibri</option>
+              <option value="'Arial', sans-serif">Arial</option>
+              <option value="'Inter', sans-serif">Inter</option>
+              <option value="'Times New Roman', serif">Times New Roman</option>
+              <option value="'Georgia', serif">Georgia</option>
+              <option value="'Courier New', monospace">Courier New</option>
+            </select>
 
-        {/* Font Size */}
-        <select
-          value={fontSize}
-          onChange={(e) => handleFontSizeChange(e.target.value)}
-          className="border border-slate-300 rounded px-2 py-1 bg-white text-xs hover:border-slate-400 focus:outline-none focus:border-indigo-500"
-          title="Font Size"
-        >
-          <option value="9pt">9 pt (Small)</option>
-          <option value="10pt">10 pt</option>
-          <option value="11pt">11 pt (Standard)</option>
-          <option value="12pt">12 pt (Body)</option>
-          <option value="14pt">14 pt (Subheading)</option>
-          <option value="16pt">16 pt (Heading)</option>
-          <option value="18pt">18 pt (Title)</option>
-        </select>
+            <select value={fontSize} onChange={(e) => handleFontSizeChange(e.target.value)} className="border border-slate-300 rounded px-1 py-0.5 bg-white text-[11px] hover:border-slate-400 focus:outline-none focus:border-indigo-500 w-12 truncate ml-0.5" title="Font Size">
+              <option value="9pt">9pt</option>
+              <option value="10pt">10pt</option>
+              <option value="11pt">11pt</option>
+              <option value="12pt">12pt</option>
+              <option value="14pt">14pt</option>
+              <option value="16pt">16pt</option>
+              <option value="18pt">18pt</option>
+            </select>
 
-        {/* Size increment / decrement */}
-        <button
-          onClick={() => {
-            const cur = parseInt(fontSize) || 11;
-            handleFontSizeChange(`${Math.max(8, cur - 1)}pt`);
-          }}
-          className="p-1 hover:bg-slate-100 rounded border border-slate-300"
-          title="Decrease Font Size"
-        >
-          <Minus className="w-3 h-3" />
-        </button>
-        <button
-          onClick={() => {
-            const cur = parseInt(fontSize) || 11;
-            handleFontSizeChange(`${Math.min(36, cur + 1)}pt`);
-          }}
-          className="p-1 hover:bg-slate-100 rounded border border-slate-300"
-          title="Increase Font Size"
-        >
-          <Plus className="w-3 h-3" />
-        </button>
+            <div className="flex items-center border border-slate-300 rounded ml-0.5 overflow-hidden">
+              <button onMouseDown={(e) => e.preventDefault()} onClick={() => { const cur = parseInt(fontSize) || 11; handleFontSizeChange(`${Math.max(8, cur - 1)}pt`); }} className="p-0.5 hover:bg-slate-200 bg-white" title="Decrease Font Size"><Minus className="w-2.5 h-2.5" /></button>
+              <div className="w-px h-3 bg-slate-300" />
+              <button onMouseDown={(e) => e.preventDefault()} onClick={() => { const cur = parseInt(fontSize) || 11; handleFontSizeChange(`${Math.max(36, cur + 1)}pt`); }} className="p-0.5 hover:bg-slate-200 bg-white" title="Increase Font Size"><Plus className="w-2.5 h-2.5" /></button>
+            </div>
 
-        <div className="h-4 w-px bg-slate-300 mx-1" />
+            <div className="w-px h-3 bg-slate-300 mx-0.5" />
 
-        {/* Basic Styles */}
-        <button
-          onClick={() => execCmd('bold')}
-          className="p-1.5 hover:bg-slate-100 rounded border border-slate-200 font-bold"
-          title="Bold (Ctrl+B)"
-        >
-          <Bold className="w-3.5 h-3.5" />
-        </button>
-        <button
-          onClick={() => execCmd('italic')}
-          className="p-1.5 hover:bg-slate-100 rounded border border-slate-200"
-          title="Italic (Ctrl+I)"
-        >
-          <Italic className="w-3.5 h-3.5" />
-        </button>
-        <button
-          onClick={() => execCmd('underline')}
-          className="p-1.5 hover:bg-slate-100 rounded border border-slate-200"
-          title="Underline (Ctrl+U)"
-        >
-          <Underline className="w-3.5 h-3.5" />
-        </button>
-        <button
-          onClick={() => execCmd('strikeThrough')}
-          className="p-1.5 hover:bg-slate-100 rounded border border-slate-200"
-          title="Strikethrough"
-        >
-          <Strikethrough className="w-3.5 h-3.5" />
-        </button>
+            <button onClick={() => execCmd('bold')} onMouseDown={(e) => e.preventDefault()} className="p-1 hover:bg-slate-200 rounded font-bold" title="Bold (Ctrl+B)"><Bold className="w-3 h-3" /></button>
+            <button onClick={() => execCmd('italic')} onMouseDown={(e) => e.preventDefault()} className="p-1 hover:bg-slate-200 rounded italic" title="Italic (Ctrl+I)"><Italic className="w-3 h-3" /></button>
+            <button onClick={() => execCmd('underline')} onMouseDown={(e) => e.preventDefault()} className="p-1 hover:bg-slate-200 rounded underline" title="Underline (Ctrl+U)"><Underline className="w-3 h-3" /></button>
+            <button onClick={() => execCmd('strikeThrough')} onMouseDown={(e) => e.preventDefault()} className="p-1 hover:bg-slate-200 rounded line-through" title="Strikethrough"><Strikethrough className="w-3 h-3" /></button>
 
-        <div className="h-4 w-px bg-slate-300 mx-1" />
+            <div className="w-px h-3 bg-slate-300 mx-0.5" />
 
-        {/* Colors */}
-        <div className="flex items-center space-x-1 border border-slate-200 rounded px-1.5 py-0.5" title="Text Color">
-          <Palette className="w-3 h-3 text-slate-500" />
-          <input
-            type="color"
-            value={textColor}
-            onChange={(e) => handleTextColorChange(e.target.value)}
-            className="w-4 h-4 cursor-pointer border-0 bg-transparent p-0"
-          />
-        </div>
-        <div className="flex items-center space-x-1 border border-slate-200 rounded px-1.5 py-0.5" title="Highlight Color">
-          <Highlighter className="w-3 h-3 text-amber-500" />
-          <input
-            type="color"
-            value={highlightColor}
-            onChange={(e) => handleHighlightColorChange(e.target.value)}
-            className="w-4 h-4 cursor-pointer border-0 bg-transparent p-0"
-          />
+            <div className="flex items-center space-x-0.5 px-0.5" title="Text Color">
+              <Palette className="w-3 h-3 text-slate-500" />
+              <input type="color" value={textColor} onChange={(e) => handleTextColorChange(e.target.value)} className="w-3.5 h-3.5 cursor-pointer border-0 bg-transparent p-0" />
+            </div>
+            <div className="flex items-center space-x-0.5 px-0.5" title="Highlight Color">
+              <Highlighter className="w-3 h-3 text-amber-500" />
+              <input type="color" value={highlightColor} onChange={(e) => handleHighlightColorChange(e.target.value)} className="w-3.5 h-3.5 cursor-pointer border-0 bg-transparent p-0" />
+            </div>
+          </div>
+
+          {/* PARAGRAPH GROUP */}
+          <div className="flex items-center space-x-0.5 border border-slate-200 rounded p-0.5 bg-slate-50/50 shrink-0">
+            <button onClick={() => execCmd('justifyLeft')} onMouseDown={(e) => e.preventDefault()} className="p-1 hover:bg-slate-200 rounded" title="Align Left"><AlignLeft className="w-3 h-3" /></button>
+            <button onClick={() => execCmd('justifyCenter')} onMouseDown={(e) => e.preventDefault()} className="p-1 hover:bg-slate-200 rounded" title="Center"><AlignCenter className="w-3 h-3" /></button>
+            <button onClick={() => execCmd('justifyRight')} onMouseDown={(e) => e.preventDefault()} className="p-1 hover:bg-slate-200 rounded" title="Align Right"><AlignRight className="w-3 h-3" /></button>
+            <button onClick={() => execCmd('justifyFull')} onMouseDown={(e) => e.preventDefault()} className="p-1 hover:bg-slate-200 rounded" title="Justify"><AlignJustify className="w-3 h-3" /></button>
+          </div>
+
+          {/* LIST GROUP */}
+          <div className="flex items-center space-x-0.5 border border-slate-200 rounded p-0.5 bg-slate-50/50 shrink-0">
+            <button onClick={() => execCmd('insertUnorderedList')} onMouseDown={(e) => e.preventDefault()} className="p-1 hover:bg-slate-200 rounded" title="Bullet List"><List className="w-3 h-3" /></button>
+            <button onClick={() => execCmd('insertOrderedList')} onMouseDown={(e) => e.preventDefault()} className="p-1 hover:bg-slate-200 rounded" title="Numbered List"><ListOrdered className="w-3 h-3" /></button>
+            <button onClick={() => execCmd('indent')} onMouseDown={(e) => e.preventDefault()} className="p-1 hover:bg-slate-200 rounded" title="Increase Indent"><Indent className="w-3 h-3" /></button>
+            <button onClick={() => execCmd('outdent')} onMouseDown={(e) => e.preventDefault()} className="p-1 hover:bg-slate-200 rounded" title="Decrease Indent"><Outdent className="w-3 h-3" /></button>
+          </div>
+
+          {/* INSERT GROUP */}
+          <div className="flex items-center space-x-0.5 border border-slate-200 rounded p-0.5 bg-slate-50/50 shrink-0">
+            <button onClick={insertTable} onMouseDown={(e) => e.preventDefault()} className="flex items-center space-x-1 px-1 py-0.5 hover:bg-slate-200 rounded" title="Insert Table">
+              <Table className="w-3 h-3 text-blue-600" />
+              <span className="hidden lg:inline">Table</span>
+            </button>
+            <button onClick={insertCurrentDate} onMouseDown={(e) => e.preventDefault()} className="flex items-center space-x-1 px-1 py-0.5 hover:bg-slate-200 rounded" title="Insert Current Date">
+              <Calendar className="w-3 h-3 text-emerald-600" />
+              <span className="hidden lg:inline">Date</span>
+            </button>
+            <button onClick={addDateStamp} onMouseDown={(e) => e.preventDefault()} className="flex items-center space-x-1 px-1 py-0.5 hover:bg-slate-200 rounded" title="Add Verified Date Stamp Overlay">
+              <Check className="w-3 h-3 text-indigo-600" />
+              <span className="hidden lg:inline">Stamp Date</span>
+            </button>
+            <button onClick={() => fileUploadRef.current?.click()} onMouseDown={(e) => e.preventDefault()} className="flex items-center space-x-1 px-1 py-0.5 hover:bg-slate-200 rounded" title="Upload Signature Image">
+              <FileText className="w-3 h-3 text-purple-600" />
+              <span className="hidden lg:inline">Upload Sign</span>
+            </button>
+            <input ref={fileUploadRef} type="file" accept="image/png, image/jpeg" onChange={handleSignatureUpload} className="hidden" />
+          </div>
         </div>
 
-        <div className="h-4 w-px bg-slate-300 mx-1" />
-
-        {/* Alignment */}
-        <button
-          onClick={() => execCmd('justifyLeft')}
-          className="p-1.5 hover:bg-slate-100 rounded border border-slate-200"
-          title="Align Left"
-        >
-          <AlignLeft className="w-3.5 h-3.5" />
-        </button>
-        <button
-          onClick={() => execCmd('justifyCenter')}
-          className="p-1.5 hover:bg-slate-100 rounded border border-slate-200"
-          title="Center"
-        >
-          <AlignCenter className="w-3.5 h-3.5" />
-        </button>
-        <button
-          onClick={() => execCmd('justifyRight')}
-          className="p-1.5 hover:bg-slate-100 rounded border border-slate-200"
-          title="Align Right"
-        >
-          <AlignRight className="w-3.5 h-3.5" />
-        </button>
-        <button
-          onClick={() => execCmd('justifyFull')}
-          className="p-1.5 hover:bg-slate-100 rounded border border-slate-200"
-          title="Justify"
-        >
-          <AlignJustify className="w-3.5 h-3.5" />
-        </button>
-
-        <div className="h-4 w-px bg-slate-300 mx-1" />
-
-        {/* Lists & Indentation */}
-        <button
-          onClick={() => execCmd('insertUnorderedList')}
-          className="p-1.5 hover:bg-slate-100 rounded border border-slate-200"
-          title="Bullet List"
-        >
-          <List className="w-3.5 h-3.5" />
-        </button>
-        <button
-          onClick={() => execCmd('insertOrderedList')}
-          className="p-1.5 hover:bg-slate-100 rounded border border-slate-200"
-          title="Numbered List"
-        >
-          <ListOrdered className="w-3.5 h-3.5" />
-        </button>
-        <button
-          onClick={() => execCmd('indent')}
-          className="p-1.5 hover:bg-slate-100 rounded border border-slate-200"
-          title="Increase Indent"
-        >
-          <Indent className="w-3.5 h-3.5" />
-        </button>
-        <button
-          onClick={() => execCmd('outdent')}
-          className="p-1.5 hover:bg-slate-100 rounded border border-slate-200"
-          title="Decrease Indent"
-        >
-          <Outdent className="w-3.5 h-3.5" />
-        </button>
-
-        <div className="h-4 w-px bg-slate-300 mx-1" />
-
-        {/* Insert Elements */}
-        <button
-          onClick={insertTable}
-          className="flex items-center space-x-1 px-2 py-1 hover:bg-slate-100 rounded border border-slate-200"
-          title="Insert Table"
-        >
-          <Table className="w-3.5 h-3.5 text-blue-600" />
-          <span>Table</span>
-        </button>
-
-        <button
-          onClick={insertCurrentDate}
-          className="flex items-center space-x-1 px-2 py-1 hover:bg-slate-100 rounded border border-slate-200"
-          title="Insert Current Date"
-        >
-          <Calendar className="w-3.5 h-3.5 text-emerald-600" />
-          <span>Date</span>
-        </button>
-
-        <button
-          onClick={addDateStamp}
-          className="flex items-center space-x-1 px-2 py-1 hover:bg-slate-100 rounded border border-slate-200"
-          title="Add Verified Date Stamp Overlay"
-        >
-          <Check className="w-3.5 h-3.5 text-indigo-600" />
-          <span>Stamp Date</span>
-        </button>
-
-        <button
-          onClick={() => fileUploadRef.current?.click()}
-          className="flex items-center space-x-1 px-2 py-1 hover:bg-slate-100 rounded border border-slate-200"
-          title="Upload Signature Image"
-        >
-          <FileText className="w-3.5 h-3.5 text-purple-600" />
-          <span>Upload Sign</span>
-        </button>
-        <input
-          ref={fileUploadRef}
-          type="file"
-          accept="image/png, image/jpeg"
-          onChange={handleSignatureUpload}
-          className="hidden"
-        />
-
-        <div className="ml-auto flex items-center space-x-3 text-slate-500">
-          <label className="flex items-center space-x-1 cursor-pointer text-[11px]">
-            <input
-              type="checkbox"
-              checked={showHeadpad}
-              onChange={(e) => setShowHeadpad(e.target.checked)}
-              className="rounded text-indigo-600 focus:ring-0 cursor-pointer"
-            />
-            <span>ALT-S Letterhead</span>
+        {/* LAYOUT GROUP */}
+        <div className="flex items-center space-x-2 border border-slate-200 rounded p-0.5 px-1.5 bg-slate-50/50 shrink-0 ml-auto">
+          <label className="flex items-center space-x-1 cursor-pointer">
+            <input type="checkbox" checked={headpadOnAllPages} onChange={(e) => _setHeadpadOnAllPages(e.target.checked)} className="rounded w-3 h-3 text-indigo-600 focus:ring-0 cursor-pointer" />
+            <span title="ALT-S Letterhead">Letterhead</span>
           </label>
-
-          <label className="flex items-center space-x-1 cursor-pointer text-[11px]">
-            <input
-              type="checkbox"
-              checked={showFooter}
-              onChange={(e) => setShowFooter(e.target.checked)}
-              className="rounded text-indigo-600 focus:ring-0 cursor-pointer"
-            />
-            <span>Official Footer</span>
+          <label className="flex items-center space-x-1 cursor-pointer">
+            <input type="checkbox" checked={showFooter} onChange={(e) => setShowFooter(e.target.checked)} className="rounded w-3 h-3 text-indigo-600 focus:ring-0 cursor-pointer" />
+            <span title="Official Footer">Footer</span>
           </label>
-
-          {/* Zoom */}
-          <div className="flex items-center space-x-1 text-[11px] bg-slate-100 px-2 py-0.5 rounded">
-            <span>Zoom:</span>
-            <button onClick={() => setZoomLevel(prev => Math.max(60, prev - 10))} className="font-bold px-1 hover:bg-slate-200 rounded">-</button>
-            <span className="font-mono w-9 text-center">{zoomLevel}%</span>
-            <button onClick={() => setZoomLevel(prev => Math.min(130, prev + 10))} className="font-bold px-1 hover:bg-slate-200 rounded">+</button>
+          <div className="flex items-center space-x-0.5 bg-white px-1 py-0.5 rounded border border-slate-200">
+            <button onClick={() => setZoomLevel(prev => Math.max(60, prev - 10))} className="font-bold px-1 hover:bg-slate-100 rounded">-</button>
+            <span className="font-mono w-7 text-center">{zoomLevel}%</span>
+            <button onClick={() => setZoomLevel(prev => Math.min(130, prev + 10))} className="font-bold px-1 hover:bg-slate-100 rounded">+</button>
           </div>
         </div>
       </div>
-
-      {/* ── Status Toast ── */}
+{/* ── Status Toast ── */}
       {statusMessage && (
         <div className="fixed bottom-6 right-6 bg-slate-900 text-white text-xs px-4 py-2.5 rounded-lg shadow-xl flex items-center space-x-2 z-50 animate-in fade-in slide-in-from-bottom-3 duration-200">
           <Check className="w-4 h-4 text-emerald-400" />
@@ -1056,7 +908,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
       )}
 
       {/* ── Main Multi-Page A4 Canvas Area ── */}
-      <div className="flex-1 overflow-y-auto p-6 flex flex-col items-center gap-8 bg-[#e8ecf2]">
+      <div className="flex-1 overflow-auto p-6 flex flex-col items-center gap-8 bg-[#e8ecf2] min-w-0">
         {pages.map((pageContent, pageIdx) => {
           const isPageActive = activePageIndex === pageIdx;
           const pageStamps = stamps.filter(s => s.pageIndex === pageIdx);
@@ -1134,7 +986,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
                 ref={el => { pageContainerRefs.current[pageIdx] = el; }}
                 style={{
                   transform: `scale(${zoomLevel / 100})`,
-                  transformOrigin: 'top center',
+                  
                   fontFamily: fontFamily
                 }}
                 className="w-[794px] min-h-[1123px] bg-white shadow-2xl border border-slate-300 relative flex flex-col justify-between p-[44px] box-border text-[#1e293b]"
@@ -1144,32 +996,28 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
                   <div>
                     {pageIdx === 0 || headpadOnAllPages ? (
                       /* Page 1: Full Official ALT-S Headpad */
-                      <div className="mb-4">
-                        <div className="flex items-start justify-between pb-3">
-                          {/* Company Logo */}
-                          <div className="flex flex-col justify-center">
-                            <img
-                              src="/altslogo.png"
-                              alt="ALT-S Logo"
-                              className="h-[52px] object-contain"
-                              onError={(e) => {
-                                // Fallback
-                                (e.target as HTMLElement).style.display = 'none';
-                              }}
-                            />
-                          </div>
+                      <div className="mb-8 w-full flex items-end">
+                        {/* Left: Company Logo */}
+                        <img
+                          src="/altslogo.png"
+                          alt="ALT-S Logo"
+                          className="max-h-[85px] max-w-[260px] object-contain shrink-0 object-left-bottom -mb-1 mix-blend-multiply"
+                          onError={(e) => {
+                            (e.target as HTMLElement).style.display = 'none';
+                          }}
+                        />
 
-                          {/* Official Company Address Block (Boxed like official sample) */}
-                          <div className="border border-slate-800 p-2 text-[8.5px] leading-tight text-slate-800 w-[240px] text-right font-sans">
-                            <p className="font-bold text-[9.5px] uppercase tracking-wider text-slate-900">ALT-S TECHNOLOGY PRIVATE LIMITED</p>
-                            <p className="mt-0.5">No. 4, Mullai Street, Thiruvalluvar Nagar,</p>
-                            <p>Ramapuram, Porur, Chennai - 600089,</p>
-                            <p>Tamil Nadu, INDIA.</p>
+                        {/* Right: Gray Bar with Text Anchored on Top */}
+                        <div className="flex-1 h-[18px] bg-[#0a3161] rounded-l-lg ml-1 relative">
+                          <div className="absolute right-0 bottom-full text-[10.5px] leading-[1.4] text-slate-800 text-left font-sans border-l-2 border-[#0a3161] pl-3 pb-1 w-max pr-1">
+                            <p className="font-bold text-[11px] uppercase text-slate-900 border-b-[1.5px] border-[#0a3161] pb-[3px] mb-[3px] mt-0">
+                              ALT-S TECHNOLOGY PRIVATE LIMITED
+                            </p>
+                            <div className="whitespace-pre-line text-slate-800">
+                              {'No. 4, Mullai Street, Thiruvalluvar Nagar,\nKamarajnagar, Poonamallee, Tiruvallur,\nTamil Nadu - 600071, INDIA'}
+                            </div>
                           </div>
                         </div>
-
-                        {/* Solid Dark Separator Bar matching sample */}
-                        <div className="h-[4.5px] bg-[#1a2b49] w-full mt-1 mb-4" />
                       </div>
                     ) : (
                       /* Subsequent Pages: Neat Header Band */

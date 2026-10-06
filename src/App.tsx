@@ -4,7 +4,10 @@ import { Header } from './components/Header';
 import { DocumentBuilder } from './components/DocumentBuilder';
 import { SignatureCenter } from './components/SignatureCenter';
 import { ApprovalWorkflow } from './components/ApprovalWorkflow';
+import { AuthScreens } from './components/AuthScreens';
 import { SecureSharingModal } from './components/SecureSharingModal';
+import { SessionExpiredModal } from './components/SessionExpiredModal';
+import { NotFoundScreen } from './components/NotFoundScreen';
 
 import { UserRole } from './types';
 import { DatabaseService } from './services/dbService';
@@ -14,6 +17,8 @@ export function App() {
   const [selectedTemplate, setSelectedTemplate] = useState('offer_letter');
   const [collapsed, setCollapsed] = useState(false);
   const [currentRole, setCurrentRole] = useState<UserRole>('hr');
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isSessionExpired, setIsSessionExpired] = useState(false);
   const [shareModalDocId, setShareModalDocId] = useState<string | null>(null);
 
   // Navigation Payloads
@@ -44,6 +49,18 @@ export function App() {
     setCurrentTab(tab);
   };
 
+  if (!isAuthenticated) {
+    return (
+      <AuthScreens 
+        onLogin={(role) => {
+          setCurrentRole(role);
+          DatabaseService.setSessionRole(role);
+          setIsAuthenticated(true);
+        }} 
+      />
+    );
+  }
+
   return (
     <div className="h-screen w-screen flex flex-col overflow-hidden bg-white text-[#172b4d] font-sans antialiased select-none">
       {/* Top Header */}
@@ -55,7 +72,11 @@ export function App() {
           setCurrentTab('signature');
         }}
         currentRole={currentRole}
-        onRoleChange={setCurrentRole}
+        onRoleChange={(role) => {
+          setCurrentRole(role);
+          DatabaseService.setSessionRole(role);
+        }}
+        onExpireSession={() => setIsSessionExpired(true)}
       />
 
       {/* Main Container: Sidebar + Content Canvas */}
@@ -107,6 +128,10 @@ export function App() {
             </div>
           )}
 
+          {/* 404 Fallback State */}
+          {currentTab !== 'signature' && currentTab !== 'builder' && currentTab !== 'approval' && (
+            <NotFoundScreen onGoHome={() => setCurrentTab('signature')} />
+          )}
 
         </main>
       </div>
@@ -117,6 +142,14 @@ export function App() {
           documentId={shareModalDocId}
           onClose={() => setShareModalDocId(null)}
         />
+      )}
+      
+      {/* Session Expired Overlay */}
+      {isSessionExpired && (
+        <SessionExpiredModal onRelogin={() => {
+          setIsSessionExpired(false);
+          setIsAuthenticated(false);
+        }} />
       )}
     </div>
   );

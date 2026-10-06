@@ -28,12 +28,12 @@ export const DocumentUploader: React.FC<{ onSwitch: () => void; onSaveSuccess: (
         const outPages: string[] = [];
         for (let i = 1; i <= pdf.numPages; i++) {
           const page = await pdf.getPage(i);
-          const vp = page.getViewport({ scale: 1.8 });
+          const vp = page.getViewport({ scale: 1.5 });
           const c = document.createElement('canvas');
           c.width = vp.width;
           c.height = vp.height;
           await page.render({ canvasContext: c.getContext('2d')!, viewport: vp }).promise;
-          outPages.push(c.toDataURL('image/png'));
+          outPages.push(c.toDataURL('image/jpeg', 0.7));
         }
         setPages(outPages);
       } else if (ext === 'docx' || ext === 'doc') {
@@ -76,34 +76,48 @@ export const DocumentUploader: React.FC<{ onSwitch: () => void; onSaveSuccess: (
       });
     }
 
-    // Use DatabaseService.createDocument so correct storage key is used and subscribers notified
-    await DatabaseService.createDocument({
-      title: docTitle || file.name,
-      category: 'other' as DocumentCategory,
-      companyId: 'alt_s',
-      personName: 'Uploaded Document',
-      personEmail: 'hr@alt-s.com',
-      personRole: 'N/A',
-      templateVersionId: 'uploaded',
-      templateVersionNumber: '1.0',
-      status: 'pending_approval',
-      variableValues: {
-        uploadedImages: JSON.stringify(pages),
-        isUploaded: 'true'
-      },
-      generatedAt: new Date().toISOString(),
-      generatedBy: 'HR Admin',
-      approvalWorkflow: {
-        id: 'wf_' + Date.now(),
-        documentId: '',
-        currentStepIndex: 0,
-        status: 'in_progress',
-        steps: steps
-      },
-      authorizations: []
-    } as any);
+    try {
+      // Use DatabaseService.createDocument so correct storage key is used and subscribers notified
+      const created = await DatabaseService.createDocument({
+        title: docTitle || file.name,
+        category: 'other' as DocumentCategory,
+        companyId: 'alt_s',
+        personName: 'Uploaded Document',
+        personEmail: 'hr@alt-s.com',
+        personRole: 'N/A',
+        templateVersionId: 'uploaded',
+        templateVersionNumber: '1.0',
+        status: 'pending_approval',
+        variableValues: {
+          uploadedImages: JSON.stringify(pages),
+          isUploaded: 'true'
+        },
+        generatedAt: new Date().toISOString(),
+        generatedBy: 'HR Admin',
+        approvalWorkflow: {
+          id: 'wf_' + Date.now(),
+          documentId: '',
+          currentStepIndex: 0,
+          status: 'in_progress',
+          steps: steps
+        },
+        authorizations: []
+      } as any);
 
-    onSaveSuccess();
+      // Create signature requests so Siva / Uma see the approval request in their Signature Requests portal
+      if (approver === 'siva_kumar' || approver === 'both') {
+        DatabaseService.createSignatureRequest(created.id, 'siva_kumar', 'siva@alt-s.com', 'HR Admin');
+      }
+      if (approver === 'uma_mageshwari' || approver === 'both') {
+        DatabaseService.createSignatureRequest(created.id, 'uma_mageshwari', 'uma@alt-s.com', 'HR Admin');
+      }
+
+      alert('Document uploaded and Signature Request sent successfully!');
+      onSaveSuccess();
+    } catch (e: any) {
+      console.error(e);
+      alert('Error sending for approval: ' + e.message);
+    }
   };
 
   return (
