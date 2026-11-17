@@ -83,35 +83,70 @@ export class DatabaseService {
     const data = await SupabaseSync.pullAllData();
     if (!data) return;
 
-    // Load data into local memory cache and notify (merge with local data, never wipe)
+    // 1. Load documents into local cache and notify (merge with local data, never wipe)
     if (data.documents && data.documents.length > 0) {
       const localDocs: SmartDocument[] = JSON.parse(this.safeGetItem(STORAGE_KEYS.DOCUMENTS) || '[]');
-      const remoteMappedDocs: SmartDocument[] = data.documents.map(d => ({
-        id: d.id,
-        documentNumber: d.document_number,
-        title: d.title,
-        category: d.category,
-        companyId: d.company_id,
-        personName: d.person_name,
-        personEmail: d.person_email,
-        personRole: d.person_role,
-        templateVersionId: d.template_version_id,
-        templateVersionNumber: d.template_version_number,
-        status: d.status,
-        variableValues: d.variable_values || {},
-        documentHash: d.document_hash,
-        originalHash: d.original_hash,
-        isTampered: d.is_tampered,
-        qrVerificationCode: d.qr_verification_code,
-        verificationUrl: d.verification_url,
-        generatedAt: d.generated_at,
-        generatedBy: d.generated_by,
-        signedAt: d.signed_at,
-        createdAt: d.created_at,
-        updatedAt: d.updated_at,
-        signatures: [],
-        approvalWorkflow: { id: `wf-${d.id}`, documentId: d.id, currentStepIndex: 0, steps: [], status: 'in_progress' }
-      }));
+      const remoteMappedDocs: SmartDocument[] = data.documents.map(d => {
+        const docSigs: DocumentSignature[] = ((data as any).signatures || [])
+          .filter((s: any) => s.document_id === d.id)
+          .map((s: any) => ({
+            id: s.id,
+            documentId: s.document_id,
+            signatoryName: s.signatory_name,
+            signatoryRole: s.signatory_role,
+            signatoryEmail: s.signatory_email,
+            method: s.method,
+            certificateSerial: s.certificate_serial,
+            certificateIssuer: s.certificate_issuer,
+            algorithm: s.algorithm,
+            signedAt: s.signed_at,
+            signatureHash: s.signature_hash,
+            status: s.status
+          }));
+
+        const docAuths: any[] = ((data as any).authorizations || [])
+          .filter((a: any) => a.document_id === d.id)
+          .map((a: any) => ({
+            id: a.id,
+            documentId: a.document_id,
+            signatoryRole: a.signatory_role,
+            signatoryName: a.signatory_name,
+            signatoryEmail: a.signatory_email,
+            method: a.method,
+            authorizedAt: a.authorized_at,
+            usedAt: a.used_at,
+            usedByRole: a.used_by_role
+          }));
+
+        return {
+          id: d.id,
+          documentNumber: d.document_number,
+          title: d.title,
+          category: d.category,
+          companyId: d.company_id,
+          personName: d.person_name,
+          personEmail: d.person_email,
+          personRole: d.person_role,
+          templateVersionId: d.template_version_id,
+          templateVersionNumber: d.template_version_number,
+          status: d.status,
+          variableValues: d.variable_values || {},
+          documentHash: d.document_hash,
+          originalHash: d.original_hash,
+          isTampered: d.is_tampered,
+          qrVerificationCode: d.qr_verification_code,
+          verificationUrl: d.verification_url,
+          generatedAt: d.generated_at,
+          generatedBy: d.generated_by,
+          signedAt: d.signed_at,
+          completedAt: d.completed_at,
+          createdAt: d.created_at,
+          updatedAt: d.updated_at,
+          signatures: docSigs,
+          authorizations: docAuths,
+          approvalWorkflow: { id: `wf-${d.id}`, documentId: d.id, currentStepIndex: 0, steps: [], status: 'in_progress' }
+        };
+      });
 
       // Merge: preserve local drafts that may not have been synced yet, or keep latest
       const mergedMap = new Map<string, SmartDocument>();
@@ -131,6 +166,63 @@ export class DatabaseService {
 
       this.safeSetItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(Array.from(mergedMap.values())));
     }
+
+    // 2. Signature Requests merge
+    if (data.signatureRequests && data.signatureRequests.length > 0) {
+      const localReqs: SignatureRequest[] = JSON.parse(this.safeGetItem(STORAGE_KEYS.SIGNATURE_REQUESTS) || '[]');
+      const remoteReqs: SignatureRequest[] = data.signatureRequests.map((r: any) => ({
+        id: r.id,
+        documentId: r.document_id,
+        documentTitle: r.document_title,
+        documentNumber: r.document_number,
+        signatoryRole: r.signatory_role,
+        signatoryName: r.signatory_name,
+        signatoryEmail: r.signatory_email,
+        requestedBy: r.requested_by,
+        requestedAt: r.requested_at,
+        status: r.status,
+        otpCode: r.otp_code,
+        otpGeneratedAt: r.otp_generated_at,
+        otpExpiresAt: r.otp_expires_at,
+        otpVerifiedAt: r.otp_verified_at,
+        authorizedAt: r.authorized_at
+      }));
+
+      const reqMap = new Map<string, SignatureRequest>();
+      remoteReqs.forEach(r => reqMap.set(r.id, r));
+      localReqs.forEach(l => {
+        if (!reqMap.has(l.id)) {
+          reqMap.set(l.id, l);
+        }
+      });
+      this.safeSetItem(STORAGE_KEYS.SIGNATURE_REQUESTS, JSON.stringify(Array.from(reqMap.values())));
+    }
+
+    // 3. Audit Logs merge
+    if (data.auditLogs && data.auditLogs.length > 0) {
+      const localLogs: AuditLog[] = JSON.parse(this.safeGetItem(STORAGE_KEYS.AUDIT_LOGS) || '[]');
+      const remoteLogs: AuditLog[] = data.auditLogs.map((l: any) => ({
+        id: l.id,
+        documentId: l.document_id,
+        documentNumber: l.document_number,
+        userName: l.user_name,
+        userRole: l.user_role,
+        action: l.action,
+        details: l.details,
+        ipAddress: l.ip_address,
+        previousStatus: l.previous_status,
+        newStatus: l.new_status,
+        timestamp: l.timestamp
+      }));
+
+      const logMap = new Map<string, AuditLog>();
+      localLogs.forEach(l => logMap.set(l.id, l));
+      remoteLogs.forEach(r => logMap.set(r.id, r));
+      this.safeSetItem(STORAGE_KEYS.AUDIT_LOGS, JSON.stringify(Array.from(logMap.values())));
+    }
+
+    // 4. Initialize Supabase Realtime Listener
+    SupabaseSync.initRealtime(() => this.notifySubscribers());
     
     // We notify subscribers after hydrating
     this.notifySubscribers();
@@ -454,6 +546,7 @@ export class DatabaseService {
     
     documents[index] = doc;
     this.safeSetItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(documents));
+    SupabaseSync.pushDocument(doc).catch(() => {});
     
     this.logAuditAction(
       'System',
@@ -616,6 +709,7 @@ export class DatabaseService {
     };
     documents[index] = updated;
     this.safeSetItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(documents));
+    SupabaseSync.pushDocument(updated).catch(() => {});
     this.notifySubscribers();
     return updated;
   }
@@ -629,6 +723,7 @@ export class DatabaseService {
     const doc = documents.find(d => d.id === id);
     documents = documents.filter(d => d.id !== id);
     this.safeSetItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(documents));
+    SupabaseSync.deleteDocument(id).catch(() => {});
 
     // Remove signature requests associated with this doc
     const reqs = this.getSignatureRequests().filter(r => r.documentId !== id);
@@ -702,6 +797,7 @@ export class DatabaseService {
     const reqs = this.getSignatureRequests();
     reqs.unshift(req);
     this.saveSignatureRequests(reqs);
+    SupabaseSync.pushSignatureRequest(req).catch(() => {});
 
     // Update document status + workflow step
     const docs = this.getDocuments();
@@ -728,6 +824,7 @@ export class DatabaseService {
         });
       }
       this.safeSetItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(docs));
+      SupabaseSync.pushDocument(docs[di]).catch(() => {});
     }
 
     this.logAuditAction(requestedBy, 'hr', 'Signature Request Sent',
@@ -760,6 +857,7 @@ export class DatabaseService {
       otpExpiresAt: expires.toISOString()
     };
     this.saveSignatureRequests(reqs);
+    SupabaseSync.pushSignatureRequest(reqs[i]).catch(() => {});
 
     this.logAuditAction(reqs[i].signatoryName, reqs[i].signatoryRole,
       'Signature Approved',
@@ -793,6 +891,7 @@ export class DatabaseService {
     // Invalidate OTP after successful single-use verification
     reqs[i] = { ...req, otpCode: undefined, otpVerifiedAt: now, authorizedAt: now };
     this.saveSignatureRequests(reqs);
+    SupabaseSync.pushSignatureRequest(reqs[i]).catch(() => {});
 
     // Unlock the signature on the document
     this.authorizeDocumentSignatory(req.documentId, req.signatoryRole, req.signatoryEmail);
@@ -829,6 +928,7 @@ export class DatabaseService {
     
     documents[index] = doc;
     this.safeSetItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(documents));
+    SupabaseSync.pushDocument(doc).catch(() => {});
     
     this.logAuditAction(
       userName,
@@ -879,6 +979,7 @@ export class DatabaseService {
       
       documents[index] = doc;
       this.safeSetItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(documents));
+      SupabaseSync.pushDocument(doc).catch(() => {});
       
       this.logAuditAction(
         hrUserName,
@@ -927,6 +1028,7 @@ export class DatabaseService {
 
     documents[index] = doc;
     this.safeSetItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(documents));
+    SupabaseSync.pushDocument(doc).catch(() => {});
 
     this.logAuditAction(
       hrUserName,
@@ -1069,6 +1171,7 @@ export class DatabaseService {
     };
     logs.unshift(newLog);
     localStorage.setItem(STORAGE_KEYS.AUDIT_LOGS, JSON.stringify(logs));
+    SupabaseSync.pushAuditLog(newLog).catch(() => {});
     return newLog;
   }
 
