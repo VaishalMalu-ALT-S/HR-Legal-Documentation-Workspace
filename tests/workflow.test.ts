@@ -187,6 +187,12 @@ describe('SMARTDOCSIGN - 17 ENTERPRISE WORKFLOW TESTS', () => {
     assert.ok(restored);
     const restoredPages = JSON.parse(restored.variableValues.pages);
     assert.equal(restoredPages[0], '<p>Page 1 Content EDITED</p>');
+
+    // Even if hydrateFromSupabase runs, drafts are never wiped out
+    await DatabaseService.hydrateFromSupabase();
+    const afterHydrate = DatabaseService.getDocumentById(initialId);
+    assert.ok(afterHydrate, 'Hydrate from Supabase must never wipe out local drafts');
+    assert.equal(JSON.parse(afterHydrate.variableValues.pages)[0], '<p>Page 1 Content EDITED</p>');
   });
 
   // ─────────────────────────────────────────────────────────────

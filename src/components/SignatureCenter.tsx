@@ -372,7 +372,7 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
           ...(targetDoc?.variableValues || {}),
           content: renderedHtml,
           uploadedImages: hasUploadedDoc && docPages.length > 0 ? JSON.stringify(docPages) : (targetDoc?.variableValues?.uploadedImages || ''),
-          pages: JSON.stringify(docPages),
+          pages: hasUploadedDoc && docPages.length > 0 ? JSON.stringify(docPages) : (targetDoc?.variableValues?.pages || '[]'),
           isUploaded: hasUploadedDoc ? 'true' : 'false',
           originalFileName: docName,
           sigs: JSON.stringify(sigs),

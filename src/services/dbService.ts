@@ -83,9 +83,10 @@ export class DatabaseService {
     const data = await SupabaseSync.pullAllData();
     if (!data) return;
 
-    // Load data into local memory cache and notify
-    if (data.documents) {
-      const mappedDocs = data.documents.map(d => ({
+    // Load data into local memory cache and notify (merge with local data, never wipe)
+    if (data.documents && data.documents.length > 0) {
+      const localDocs: SmartDocument[] = JSON.parse(this.safeGetItem(STORAGE_KEYS.DOCUMENTS) || '[]');
+      const remoteMappedDocs: SmartDocument[] = data.documents.map(d => ({
         id: d.id,
         documentNumber: d.document_number,
         title: d.title,
@@ -97,7 +98,7 @@ export class DatabaseService {
         templateVersionId: d.template_version_id,
         templateVersionNumber: d.template_version_number,
         status: d.status,
-        variableValues: d.variable_values,
+        variableValues: d.variable_values || {},
         documentHash: d.document_hash,
         originalHash: d.original_hash,
         isTampered: d.is_tampered,
@@ -107,9 +108,28 @@ export class DatabaseService {
         generatedBy: d.generated_by,
         signedAt: d.signed_at,
         createdAt: d.created_at,
-        updatedAt: d.updated_at
+        updatedAt: d.updated_at,
+        signatures: [],
+        approvalWorkflow: { id: `wf-${d.id}`, documentId: d.id, currentStepIndex: 0, steps: [], status: 'in_progress' }
       }));
-      this.safeSetItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(mappedDocs));
+
+      // Merge: preserve local drafts that may not have been synced yet, or keep latest
+      const mergedMap = new Map<string, SmartDocument>();
+      remoteMappedDocs.forEach(d => mergedMap.set(d.id, d));
+      localDocs.forEach(local => {
+        const remote = mergedMap.get(local.id);
+        if (!remote) {
+          mergedMap.set(local.id, local);
+        } else {
+          const localTime = new Date(local.updatedAt || local.createdAt).getTime();
+          const remoteTime = new Date(remote.updatedAt || remote.createdAt).getTime();
+          if (localTime >= remoteTime) {
+            mergedMap.set(local.id, local);
+          }
+        }
+      });
+
+      this.safeSetItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(Array.from(mergedMap.values())));
     }
     
     // We notify subscribers after hydrating
@@ -509,6 +529,7 @@ export class DatabaseService {
 
       documents[existingIndex] = updatedDoc;
       this.safeSetItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(documents));
+      SupabaseSync.pushDocument(updatedDoc).catch(() => {});
 
       this.logAuditAction(
         draftData.generatedBy || 'HR Admin',
@@ -565,6 +586,7 @@ export class DatabaseService {
 
       documents.unshift(newDraft);
       this.safeSetItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(documents));
+      SupabaseSync.pushDocument(newDraft).catch(() => {});
 
       this.logAuditAction(
         newDraft.generatedBy,

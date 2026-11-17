@@ -23,8 +23,10 @@ export const DraftsManager: React.FC<DraftsManagerProps> = ({
   const [selectedCompanyFilter, setSelectedCompanyFilter] = useState('all');
   const [deleteConfirmDoc, setDeleteConfirmDoc] = useState<SmartDocument | null>(null);
 
-  // Filter only draft documents
-  const allDrafts = documents.filter(d => d.status === 'draft');
+  // Filter only draft documents and sort by latest updated first
+  const allDrafts = documents
+    .filter(d => !d.status || d.status === 'draft')
+    .sort((a, b) => new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime());
 
   const filteredDrafts = allDrafts.filter(doc => {
     const matchesSearch = 

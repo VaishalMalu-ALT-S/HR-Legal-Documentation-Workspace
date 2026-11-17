@@ -14,7 +14,9 @@ import { UserRole } from './types';
 import { DatabaseService } from './services/dbService';
 
 export function App() {
-  const [currentTab, setCurrentTab] = useState('signature');
+  const [currentTab, setCurrentTab] = useState(() => {
+    return localStorage.getItem('signhr_active_tab') || 'signature';
+  });
   const [selectedTemplate, setSelectedTemplate] = useState('asset_acknowledgment');
   const [collapsed, setCollapsed] = useState(false);
   const [currentRole, setCurrentRole] = useState<UserRole>(() => (localStorage.getItem('signhr_auth_role') as UserRole) || 'hr');
@@ -23,7 +25,9 @@ export function App() {
   const [shareModalDocId, setShareModalDocId] = useState<string | null>(null);
 
   // Navigation Payloads
-  const [signatureDocId, setSignatureDocId] = useState<string | undefined>();
+  const [signatureDocId, setSignatureDocId] = useState<string | undefined>(() => {
+    return localStorage.getItem('signhr_active_doc_id') || undefined;
+  });
   const [verificationDocNumber, setVerificationDocNumber] = useState<string>('DOC-2026-000124');
   // Increment to force DocumentBuilder remount (guarantees clean state on New Document)
   const [builderKey, setBuilderKey] = useState<number>(0);
@@ -49,9 +53,13 @@ export function App() {
   }, [currentRole, currentTab]);
 
   const handleNavigate = (tab: string, payload?: { documentId?: string; documentNumber?: string; templateId?: string }) => {
-    if (payload?.documentId) setSignatureDocId(payload.documentId);
+    if (payload?.documentId) {
+      setSignatureDocId(payload.documentId);
+      localStorage.setItem('signhr_active_doc_id', payload.documentId);
+    }
     if (payload?.documentNumber) setVerificationDocNumber(payload.documentNumber);
     setCurrentTab(tab);
+    localStorage.setItem('signhr_active_tab', tab);
   };
 
   const draftsCount = documents.filter(d => d.status === 'draft').length;
@@ -79,8 +87,10 @@ export function App() {
         onOpenCreate={() => {
           setSelectedTemplate('asset_acknowledgment');
           setSignatureDocId(undefined);
+          localStorage.removeItem('signhr_active_doc_id');
           setBuilderKey(k => k + 1); // Force remount → clean landing screen
           setCurrentTab('builder');
+          localStorage.setItem('signhr_active_tab', 'builder');
         }}
         currentRole={currentRole}
         onRoleChange={(role) => {
@@ -143,13 +153,17 @@ export function App() {
                   onContinueEditing={(doc) => {
                     // Always open in the DocumentBuilder editor so branding is preserved
                     setSignatureDocId(doc.id);
+                    localStorage.setItem('signhr_active_doc_id', doc.id);
                     setCurrentTab('builder');
+                    localStorage.setItem('signhr_active_tab', 'builder');
                   }}
                   onOpenCreate={() => {
-                    setSelectedTemplate('offer_letter');
+                    setSelectedTemplate('asset_acknowledgment');
                     setSignatureDocId(undefined);
+                    localStorage.removeItem('signhr_active_doc_id');
                     setBuilderKey(k => k + 1); // Force remount → clean landing screen
                     setCurrentTab('builder');
+                    localStorage.setItem('signhr_active_tab', 'builder');
                   }}
                 />
               </div>

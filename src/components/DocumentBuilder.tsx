@@ -67,7 +67,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
   useEffect(() => {
     if (initialDocId) {
       setCurrentBuilderDocId(initialDocId);
-      const doc = DatabaseService.getDocuments().find(d => d.id === initialDocId);
+      const doc = DatabaseService.getDocumentById(initialDocId) || DatabaseService.getDocuments().find(d => d.id === initialDocId);
       if (doc && doc.variableValues) {
         setDocumentTitle(doc.title);
         if (doc.companyId) setSelectedCompanyId(doc.companyId);
@@ -76,9 +76,34 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
           setLastSavedTime(new Date(doc.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
         }
         try {
-          if (doc.variableValues.pages) setPages(JSON.parse(doc.variableValues.pages));
-          if (doc.variableValues.stamps) setStamps(JSON.parse(doc.variableValues.stamps));
-          if (doc.variableValues.variables) setVariables(JSON.parse(doc.variableValues.variables));
+          let loadedPages: string[] | null = null;
+          if (doc.variableValues.pages) {
+            const parsed = typeof doc.variableValues.pages === 'string'
+              ? JSON.parse(doc.variableValues.pages)
+              : doc.variableValues.pages;
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              loadedPages = parsed;
+            }
+          }
+          if ((!loadedPages || loadedPages.length === 0) && doc.variableValues.content) {
+            const split = doc.variableValues.content.split(/\n?<!-- page-break -->\n?/);
+            if (split.length > 0) loadedPages = split;
+          }
+          if (loadedPages && loadedPages.length > 0) {
+            setPages(loadedPages);
+          }
+          if (doc.variableValues.stamps) {
+            const parsedStamps = typeof doc.variableValues.stamps === 'string'
+              ? JSON.parse(doc.variableValues.stamps)
+              : doc.variableValues.stamps;
+            if (Array.isArray(parsedStamps)) setStamps(parsedStamps);
+          }
+          if (doc.variableValues.variables) {
+            const parsedVars = typeof doc.variableValues.variables === 'string'
+              ? JSON.parse(doc.variableValues.variables)
+              : doc.variableValues.variables;
+            if (parsedVars) setVariables(parsedVars);
+          }
           // Restore branding config
           if (doc.variableValues.showHeadpad !== undefined) setShowHeadpad(doc.variableValues.showHeadpad === 'true');
           if (doc.variableValues.showFooter !== undefined) setShowFooter(doc.variableValues.showFooter === 'true');
@@ -292,59 +317,6 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
   }, [pages]);
 
 
-  // ── Auto-Pagination Engine ──
-  useEffect(() => {
-    const checkOverflow = () => {
-      let needsReflow = false;
-      const newPages = [...pages];
-
-      // Scan all pages for overflow
-      for (let i = 0; i < pageContainerRefs.current.length; i++) {
-        const container = pageContainerRefs.current[i];
-        const editor = editorRefs.current[i];
-        
-        // A4 page height is approx 1123px. If container exceeds this, it's overflowing.
-        if (container && editor && container.clientHeight > 1130) {
-          // It's overflowing. Move the last child of the editor to the next page.
-          const children = Array.from(editor.children);
-          if (children.length > 1) {
-            // Check if user is actively typing in the last child
-            const selection = window.getSelection();
-            const activeNode = selection?.anchorNode;
-            const lastChild = children[children.length - 1];
-            
-            // If they are currently typing in the node we want to move, we delay until they stop
-            if (activeNode && lastChild.contains(activeNode)) {
-              continue; 
-            }
-
-            needsReflow = true;
-            const poppedHtml = lastChild.outerHTML;
-            
-            // Remove from current page
-            const remainingHtml = children.slice(0, children.length - 1).map(c => c.outerHTML).join('\n');
-            newPages[i] = remainingHtml;
-            
-            // Push to next page
-            if (i + 1 < newPages.length) {
-              newPages[i + 1] = poppedHtml + '\n' + newPages[i + 1];
-            } else {
-              newPages.push(poppedHtml);
-            }
-          }
-        }
-      }
-
-      if (needsReflow) {
-        setPages(newPages);
-      }
-    };
-
-    // Debounce the check slightly so it doesn't interrupt fast typing
-    const timer = setTimeout(checkOverflow, 1500);
-    return () => clearTimeout(timer);
-  }, [pages]);
-
   // Sync editor innerHTML to pages state
   const handlePageInput = (index: number) => {
     const el = editorRefs.current[index];
@@ -352,6 +324,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
       const newPages = [...pages];
       newPages[index] = el.innerHTML;
       setPages(newPages);
+      setIsDirty(true);
     }
   };
 
@@ -856,7 +829,14 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
   // Save to Local Vault
   const handleSaveToVault = async () => {
     try {
-      const fullHtml = pages.join('\n<!-- page-break -->\n');
+      // Capture live DOM content from editors
+      const livePages = pages.map((pageHtml, idx) => {
+        const el = editorRefs.current[idx];
+        return el ? el.innerHTML : pageHtml;
+      });
+      setPages(livePages);
+
+      const fullHtml = livePages.join('\n<!-- page-break -->\n');
       
       const docData = {
         title: documentTitle,
@@ -870,7 +850,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
         status: 'draft' as const,
         variableValues: {
           content: fullHtml,
-          pages: JSON.stringify(pages),
+          pages: JSON.stringify(livePages),
           stamps: JSON.stringify(stamps),
           variables: JSON.stringify(variables),
           // Persist branding config so it survives Save → Reopen
@@ -892,14 +872,15 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
 
       const saved = await DatabaseService.saveDraft(docData as any, currentBuilderDocId || initialDocId);
       setCurrentBuilderDocId(saved.id);
+      localStorage.setItem('signhr_active_doc_id', saved.id);
       setIsDirty(false);
       const t = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       setLastSavedTime(t);
       notifyUser(`Draft "${documentTitle}" saved safely!`);
       return saved.id;
-    } catch (err) {
+    } catch (err: any) {
       console.error('Save error:', err);
-      notifyUser('Document saved to local workspace cache.');
+      notifyUser('Error saving draft: ' + err.message);
       return null;
     }
   };
