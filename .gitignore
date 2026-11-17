@@ -28,3 +28,11 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Temporary & backup files
+*.backup.*
+*.bak
+diff.txt
+FULL_CONVERSATION.md
+*.tmp
+

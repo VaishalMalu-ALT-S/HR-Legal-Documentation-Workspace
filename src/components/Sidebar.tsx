@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import {
   ChevronDown, ChevronRight, ChevronLeft,
   PenTool, LayoutTemplate, ShieldCheck, Archive,
-  CheckCircle, CheckCircle2
+  CheckCircle, CheckCircle2, FileText
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -13,6 +13,7 @@ interface SidebarProps {
   activeDocTemplate?: string;
   onSelectDocTemplate?: (templateKey: string) => void;
   currentRole: string;
+  draftsCount?: number;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -23,6 +24,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   activeDocTemplate = 'offer_letter',
   onSelectDocTemplate,
   currentRole,
+  draftsCount = 0,
 }) => {
   const [signingOpen, setSigningOpen] = useState(true);
   const [automationOpen, setAutomationOpen] = useState(true);
@@ -55,7 +57,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <button
           onClick={() => setCurrentTab('signature')}
           className={`p-2 rounded transition-colors ${
-            currentTab === 'signature' ? 'bg-[#deebff] text-[#0052cc]' : 'text-[#42526e] hover:bg-[#ebecf0]'
+            currentTab === 'signature' ? 'bg-[#e2e8f0] text-brand-900 font-semibold' : 'text-[#475569] hover:bg-[#f1f5f9]'
           }`}
           title="Sign & Stamp Studio"
         >
@@ -65,18 +67,33 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <button
           onClick={() => setCurrentTab('approval')}
           className={`p-2 rounded transition-colors ${
-            currentTab === 'approval' ? 'bg-[#deebff] text-[#0052cc]' : 'text-[#42526e] hover:bg-[#ebecf0]'
+            currentTab === 'approval' ? 'bg-[#e2e8f0] text-brand-900 font-semibold' : 'text-[#475569] hover:bg-[#f1f5f9]'
           }`}
-          title="Approval Center"
+          title="Document Pipeline"
         >
           <CheckCircle2 size={14} />
         </button>
 
         {currentRole === 'hr' && (
           <button
+            onClick={() => setCurrentTab('drafts')}
+            className={`p-2 rounded transition-colors relative ${
+              currentTab === 'drafts' ? 'bg-[#e2e8f0] text-brand-900 font-semibold' : 'text-[#475569] hover:bg-[#f1f5f9]'
+            }`}
+            title="HR Document Drafts"
+          >
+            <FileText size={14} />
+            {draftsCount > 0 && (
+              <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-amber-500" />
+            )}
+          </button>
+        )}
+
+        {currentRole === 'hr' && (
+          <button
             onClick={() => setCurrentTab('builder')}
             className={`p-2 rounded transition-colors ${
-              currentTab === 'builder' ? 'bg-[#deebff] text-[#0052cc]' : 'text-[#42526e] hover:bg-[#ebecf0]'
+              currentTab === 'builder' ? 'bg-[#e2e8f0] text-brand-900 font-semibold' : 'text-[#475569] hover:bg-[#f1f5f9]'
             }`}
             title="Letterhead Editor"
           >
@@ -90,7 +107,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   }
 
   return (
-    <aside className="w-[190px] bg-[#fafbfc] border-r border-[#ebecf0] shrink-0 flex flex-col justify-between select-none h-full">
+    <aside className="w-[230px] bg-[#fafbfc] border-r border-[#ebecf0] shrink-0 flex flex-col justify-between select-none h-full">
       <div className="flex flex-col flex-1 overflow-y-auto">
         {/* Workspace Title & Collapse Toggle */}
         <div className="px-3 pt-3.5 pb-2.5 flex items-center justify-between border-b border-[#ebecf0]/70">
@@ -123,7 +140,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <div>
             <button
               onClick={() => setSigningOpen(!signingOpen)}
-              className="w-full flex items-center gap-1.5 px-2 py-1 text-[10px] font-bold text-[#6b778c] uppercase tracking-wider hover:text-[#172b4d]"
+              className="w-full flex items-center gap-1.5 px-2 py-1 text-[12px] font-bold text-[#6b778c] uppercase tracking-wider hover:text-[#172b4d]"
             >
               {signingOpen ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
               <span>{currentRole === 'hr' ? 'HR WORKSPACE' : 'MANAGEMENT'}</span>
@@ -134,31 +151,48 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 {currentRole === 'hr' && (
                   <button
                     onClick={() => setCurrentTab('approval')}
-                    className={`w-full flex items-center gap-2 px-2 py-1 rounded text-[11px] font-semibold transition-colors text-left ${
+                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-[13px] font-semibold transition-colors text-left ${
                       currentTab === 'approval'
-                        ? 'bg-[#deebff] text-[#0052cc]'
-                        : 'text-[#42526e] hover:bg-[#ebecf0]'
+                        ? 'bg-[#e2e8f0] text-brand-900 font-semibold'
+                        : 'text-[#475569] hover:bg-[#f1f5f9]'
                     }`}
                   >
-                    <div className="w-4 h-4 rounded bg-[#e6ffe6] border border-[#36b37e] flex items-center justify-center shrink-0">
-                      <CheckCircle2 size={11} className="text-[#36b37e]" />
-                    </div>
+                    <CheckCircle2 size={16} className="shrink-0" />
                     <span className="truncate">Document Pipeline</span>
                   </button>
                 )}
 
                 {currentRole === 'hr' && (
                   <button
-                    onClick={() => setCurrentTab('builder')}
-                    className={`w-full flex items-center gap-2 px-2 py-1 rounded text-[11px] font-semibold transition-colors text-left ${
-                      currentTab === 'builder'
-                        ? 'bg-[#deebff] text-[#0052cc]'
-                        : 'text-[#42526e] hover:bg-[#ebecf0]'
+                    onClick={() => setCurrentTab('drafts')}
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-[13px] font-semibold transition-colors text-left ${
+                      currentTab === 'drafts'
+                        ? 'bg-[#e2e8f0] text-brand-900 font-semibold'
+                        : 'text-[#475569] hover:bg-[#f1f5f9]'
                     }`}
                   >
-                    <div className="w-4 h-4 rounded bg-[#e6fcff] border border-[#00b8d9] flex items-center justify-center shrink-0">
-                      <LayoutTemplate size={11} className="text-[#00a3bf]" />
+                    <div className="flex items-center gap-2 min-w-0">
+                      <FileText size={16} className="shrink-0" />
+                      <span className="truncate">Drafts</span>
                     </div>
+                    {draftsCount > 0 && (
+                      <span className="text-[12px] font-bold px-1.5 py-0.2 rounded-full bg-amber-100 text-amber-900 border border-amber-200 shrink-0 ml-1">
+                        {draftsCount}
+                      </span>
+                    )}
+                  </button>
+                )}
+
+                {currentRole === 'hr' && (
+                  <button
+                    onClick={() => setCurrentTab('builder')}
+                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-[13px] font-semibold transition-colors text-left ${
+                      currentTab === 'builder'
+                        ? 'bg-[#e2e8f0] text-brand-900 font-semibold'
+                        : 'text-[#475569] hover:bg-[#f1f5f9]'
+                    }`}
+                  >
+                    <LayoutTemplate size={16} className="shrink-0" />
                     <span className="truncate">New Document</span>
                   </button>
                 )}
@@ -166,15 +200,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 {currentRole === 'hr' && (
                   <button
                     onClick={() => setCurrentTab('signature')}
-                    className={`w-full flex items-center gap-2 px-2 py-1 rounded text-[11px] font-semibold transition-colors text-left ${
+                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-[13px] font-semibold transition-colors text-left ${
                       currentTab === 'signature'
-                        ? 'bg-[#deebff] text-[#0052cc]'
-                        : 'text-[#42526e] hover:bg-[#ebecf0]'
+                        ? 'bg-[#e2e8f0] text-brand-900 font-semibold'
+                        : 'text-[#475569] hover:bg-[#f1f5f9]'
                     }`}
                   >
-                    <div className="w-4 h-4 rounded bg-[#e6fcff] border border-[#00b8d9] flex items-center justify-center shrink-0">
-                      <PenTool size={11} className="text-[#00a3bf]" />
-                    </div>
+                    <PenTool size={16} className="shrink-0" />
                     <span className="truncate">Completed Documents</span>
                   </button>
                 )}
@@ -182,15 +214,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 {currentRole !== 'hr' && (
                   <button
                     onClick={() => setCurrentTab('approval')}
-                    className={`w-full flex items-center gap-2 px-2 py-1 rounded text-[11px] font-semibold transition-colors text-left ${
+                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-[13px] font-semibold transition-colors text-left ${
                       currentTab === 'approval'
-                        ? 'bg-[#deebff] text-[#0052cc]'
-                        : 'text-[#42526e] hover:bg-[#ebecf0]'
+                        ? 'bg-[#e2e8f0] text-brand-900 font-semibold'
+                        : 'text-[#475569] hover:bg-[#f1f5f9]'
                     }`}
                   >
-                    <div className="w-4 h-4 rounded bg-[#e6ffe6] border border-[#36b37e] flex items-center justify-center shrink-0">
-                      <CheckCircle2 size={11} className="text-[#36b37e]" />
-                    </div>
+                    <CheckCircle2 size={16} className="shrink-0" />
                     <span className="truncate">Documents to Review</span>
                   </button>
                 )}
@@ -198,15 +228,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 {currentRole !== 'hr' && (
                   <button
                     onClick={() => setCurrentTab('signature')}
-                    className={`w-full flex items-center gap-2 px-2 py-1 rounded text-[11px] font-semibold transition-colors text-left ${
+                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-[13px] font-semibold transition-colors text-left ${
                       currentTab === 'signature'
-                        ? 'bg-[#deebff] text-[#0052cc]'
-                        : 'text-[#42526e] hover:bg-[#ebecf0]'
+                        ? 'bg-[#e2e8f0] text-brand-900 font-semibold'
+                        : 'text-[#475569] hover:bg-[#f1f5f9]'
                     }`}
                   >
-                    <div className="w-4 h-4 rounded bg-[#e6fcff] border border-[#00b8d9] flex items-center justify-center shrink-0">
-                      <PenTool size={11} className="text-[#00a3bf]" />
-                    </div>
+                    <PenTool size={16} className="shrink-0" />
                     <span className="truncate">Approved Documents</span>
                   </button>
                 )}
@@ -214,15 +242,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 {currentRole !== 'hr' && (
                   <button
                     onClick={() => setCurrentTab('signature')}
-                    className={`w-full flex items-center gap-2 px-2 py-1 rounded text-[11px] font-semibold transition-colors text-left ${
+                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-[13px] font-semibold transition-colors text-left ${
                       currentTab === 'signature'
-                        ? 'bg-[#deebff] text-[#0052cc]'
-                        : 'text-[#42526e] hover:bg-[#ebecf0]'
+                        ? 'bg-[#e2e8f0] text-brand-900 font-semibold'
+                        : 'text-[#475569] hover:bg-[#f1f5f9]'
                     }`}
                   >
-                    <div className="w-4 h-4 rounded bg-[#e6fcff] border border-[#00b8d9] flex items-center justify-center shrink-0">
-                      <CheckCircle2 size={11} className="text-[#00a3bf]" />
-                    </div>
+                    <CheckCircle2 size={16} className="shrink-0" />
                     <span className="truncate">Completed Documents</span>
                   </button>
                 )}
@@ -235,7 +261,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       {/* Footer Info */}
-      <div className="p-3 border-t border-[#ebecf0] bg-[#fafbfc] text-[11px] text-[#6b778c] flex items-center justify-between shrink-0">
+      <div className="p-3 border-t border-[#ebecf0] bg-[#fafbfc] text-[13px] text-[#6b778c] flex items-center justify-between shrink-0">
         <span>ALT-S Technology</span>
         <span className="flex items-center gap-1 text-emerald-600 font-semibold">
           <CheckCircle size={11} /> Live

@@ -92,38 +92,87 @@ ALT-S HR & Legal Documentation Workspace (SmartDocSign) is an enterprise-grade d
 
 ---
 
-## Project Structure
+## 🔐 Login Credentials & Roles (RBAC)
+
+The application includes preconfigured accounts with Role-Based Access Control:
+
+| Role | User Name | Login Email | Password | Permissions & Access Scope |
+| :--- | :--- | :--- | :--- | :--- |
+| **HR Admin** | HR Administrator | `hr@alt-s.com` | `admin123` *(or any)* | **Full Workspace Access**: Multi-Page Letterhead Editor, Document Builder, Drafts Manager, Signature Center, Request Approvals, Audit Logs |
+| **Managing Director** | Siva Kumar | `siva@alt-s.com` | `admin123` *(or any)* | **Executive Review**: Document Approvals & Director Digital Signing Studio |
+| **Board Director** | Uma Mageshwari | `uma@alt-s.com` | `admin123` *(or any)* | **Executive Review**: Document Approvals & Director Digital Signing Studio |
+
+> **💡 Quick Sign-In Tip**:
+> - On the login screen, click any of the **Demo Accounts (Click to Auto-fill)** buttons to automatically populate the email and password and sign in immediately.
+> - For local development, **any non-empty password** is accepted. The system routes the user to the appropriate role based on the email entered (`siva*` for Siva Kumar, `uma*` for Uma Mageshwari, and any other email for HR Admin).
+
+---
+
+## Project Structure & Architecture
 
 ```
-├── public/
-│   ├── altslogo.png            # Official ALT-S corporate logo
-│   └── favicon.png             # Application favicon
+HR-Legal-Documentation-Workspace/
+├── .vscode/                       # IDE editor settings
+├── docs/                          # Guides, specifications, & workflows
+│   ├── OTP_IMPLEMENTATION.md      # Email OTP workflow documentation
+│   └── guides/                    # Deployment & quality guidelines
+├── public/                        # Static assets served by Vite
+│   ├── altslogo.png               # Official ALT-S corporate logo
+│   ├── LinkERP.png                # LinkERP brand logo
+│   ├── Sifratech.png              # Sifratech brand logo
+│   ├── siva_sig.png               # Digital signature asset for Siva Kumar
+│   ├── uma_sig.png                # Digital signature asset for Uma Mageshwari
+│   ├── sign1.jpg / sign2.jpg      # Sample uploaded signatures
+│   └── favicon.png                # Application favicon
+├── resources/                     # Source documents & vector assets
+│   ├── branding/                  # Master AI, EPS, SVG, and high-res brand assets
+│   └── templates/                 # Reference DOCX & PDF source contracts
 ├── src/
-│   ├── components/
-│   │   ├── DocumentBuilder.tsx     # Multi-page A4 letterhead editor
-│   │   ├── SignatureCenter.tsx     # Sign and stamp studio
-│   │   ├── DocumentVault.tsx       # Document repository and management
-│   │   ├── DocumentVerification.tsx # Public verification portal
-│   │   ├── Header.tsx              # Navigation bar and app switcher
-│   │   ├── Sidebar.tsx             # Workspace navigation and template selector
-│   │   └── SecureSharingModal.tsx  # Secure link generation
+│   ├── components/                # Modular UI views & modals
+│   │   ├── ApprovalWorkflow.tsx   # Multi-tier director approval interface
+│   │   ├── AuthScreens.tsx        # Authentication & login screen with quick-fill
+│   │   ├── DocumentBuilder.tsx    # Multi-page A4 letterhead editor
+│   │   ├── DocumentUploader.tsx   # PDF/DOCX import and parser
+│   │   ├── DraftsManager.tsx      # Draft document management
+│   │   ├── Header.tsx             # Global application navbar & status
+│   │   ├── LegalModals.tsx        # Privacy policy & terms of service
+│   │   ├── OtpVerificationModal.tsx # OTP challenge modal
+│   │   ├── RoleSwitcher.tsx       # Live role-switching badge
+│   │   ├── SecureSharingModal.tsx # Time-bounded link generator
+│   │   ├── Sidebar.tsx            # Navigation rail & templates
+│   │   ├── SignatureCenter.tsx    # Stamp and digital signature studio
+│   │   └── SmartCopilot.tsx       # AI assistant drawer
 │   ├── data/
-│   │   └── templates.ts            # Official company document templates
+│   │   ├── companies.ts           # Multi-entity configuration (ALT-S, Sifratech, LinkERP)
+│   │   ├── seededData.ts          # Default mock employees & templates
+│   │   └── templates.ts           # Preloaded corporate contract templates
 │   ├── services/
-│   │   ├── dbService.ts            # Local database service and persistence
-│   │   ├── cryptoService.ts        # Cryptographic hash generation and verification
-│   │   └── documentProcessor.ts    # PDF and HTML rendering utilities
-│   ├── utils/
-│   │   └── stampGenerator.ts       # ALT-S corporate seal SVG generator
+│   │   ├── digitalSignature/      # Pluggable signature providers (DSC, eSign, Demo)
+│   │   ├── aiAssistant.ts         # SmartCopilot prompt parser
+│   │   ├── cryptoService.ts       # SHA-256 ledger & verification hashes
+│   │   ├── dbService.ts           # Reactive database service & local cache
+│   │   ├── documentProcessor.ts   # jsPDF & HTML canvas export rendering
+│   │   ├── supabaseClient.ts      # Supabase client instantiation
+│   │   └── SupabaseSync.ts        # Cloud database synchronization
+│   ├── supabase/
+│   │   └── schema.sql             # PostgreSQL schema definition
 │   ├── types/
-│   │   └── index.ts                # TypeScript interfaces and type definitions
-│   ├── App.tsx                     # Main application container
-│   ├── main.tsx                    # Application entry point
-│   └── index.css                   # Global styles and Tailwind imports
-├── package.json
-├── tsconfig.json
-├── vite.config.ts
-└── tailwind.config.js
+│   │   └── index.ts               # Core TypeScript models and interfaces
+│   ├── utils/
+│   │   └── stampGenerator.ts      # Vector company seal generator
+│   ├── App.tsx                    # Root application component
+│   ├── main.tsx                   # React 19 application entry point
+│   └── index.css                  # Global Tailwind CSS styling
+├── .env                           # Environment variables
+├── .gitignore                     # Git ignore rules
+├── eslint.config.js               # ESLint configuration
+├── index.html                     # HTML root template
+├── package.json                   # Project metadata & npm scripts
+├── postcss.config.js              # PostCSS configuration
+├── README.md                      # Project documentation
+├── tailwind.config.js             # Tailwind CSS configuration
+├── tsconfig.json                  # TypeScript compiler settings
+└── vite.config.ts                 # Vite bundler configuration
 ```
 
 ---

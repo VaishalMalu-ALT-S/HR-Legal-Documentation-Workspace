@@ -20,7 +20,7 @@
   }
 
   h1, h2, h3, h4, .font-heading {
-    font-family: 'Outfit', 'Inter', system-ui, sans-serif;
+    font-family: 'Inter', system-ui, sans-serif;
   }
 
   code, .font-mono, pre {
@@ -49,11 +49,8 @@
 .animate-slide-right { animation: slideRight 0.25s ease-out forwards; }
 
 /* Pulse Glow for Active States */
-@keyframes pulseGlow {
-  0%, 100% { box-shadow: 0 0 0 3px rgba(14,165,233,0.12); }
-  50%       { box-shadow: 0 0 0 6px rgba(14,165,233,0.20); }
-}
-.pulse-glow { animation: pulseGlow 2.4s ease-in-out infinite; }
+
+/* Removed pulse-glow */
 
 /* Document Paper for Preview */
 .document-paper {
@@ -91,6 +88,6 @@
 
 /* Editor Content Styles */
 .editor-content p { margin-bottom: 1em; }
-.editor-content h1, .editor-content h2, .editor-content h3 { font-family: 'Outfit', sans-serif; font-weight: 700; margin-top: 1.5em; margin-bottom: 0.5em; }
+.editor-content h1, .editor-content h2, .editor-content h3 { font-family: 'Inter', system-ui, sans-serif; font-weight: 700; margin-top: 1.5em; margin-bottom: 0.5em; }
 .editor-content h1 { font-size: 2em; }
 .editor-content h2 { font-size: 1.5em; }

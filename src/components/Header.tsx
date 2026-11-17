@@ -13,6 +13,7 @@ interface HeaderProps {
   currentRole: UserRole;
   onRoleChange: (role: UserRole) => void;
   onExpireSession?: () => void;
+  onLogout?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -21,7 +22,8 @@ export const Header: React.FC<HeaderProps> = ({
   onNavigate,
   currentRole,
   onRoleChange,
-  onExpireSession
+  onExpireSession,
+  onLogout
 }) => {
   const [searchValue, setSearchValue] = useState('');
   const [showAppSwitcher, setShowAppSwitcher] = useState(false);
@@ -34,7 +36,7 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   return (
-    <header className="h-10 bg-white border-b border-[#ebecf0] px-3 flex items-center justify-between shrink-0 select-none z-40 relative">
+    <header className="h-14 bg-white border-b border-[#ebecf0] px-3 flex items-center justify-between shrink-0 select-none z-40 relative">
       {/* Left Section: App Switcher + Brand Logo + Functional Tabs */}
       <div className="flex items-center gap-2">
         {/* App Switcher 9-dots */}
@@ -63,9 +65,9 @@ export const Header: React.FC<HeaderProps> = ({
               <div className="space-y-1">
                 <button
                   onClick={() => { onNavigate?.('signature'); setShowAppSwitcher(false); }}
-                  className="w-full text-left p-2 rounded-lg hover:bg-indigo-50 hover:text-indigo-700 flex items-center gap-2.5 transition-colors"
+                  className="w-full text-left p-2 rounded-lg hover:bg-slate-50 hover:text-brand-900 flex items-center gap-2.5 transition-colors"
                 >
-                  <div className="w-6 h-6 rounded bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-[10px]">✍</div>
+                  <div className="w-6 h-6 rounded bg-indigo-100 text-brand-900 flex items-center justify-center font-bold text-[10px]">✍</div>
                   <div>
                     <div className="font-bold text-slate-800">Sign & Stamp Studio</div>
                     <div className="text-[10px] text-slate-500">Sign PDFs & DOCX docs</div>
@@ -73,13 +75,23 @@ export const Header: React.FC<HeaderProps> = ({
                 </button>
                 <button
                   onClick={() => { onNavigate?.('builder'); setShowAppSwitcher(false); }}
-                  className="w-full text-left p-2 rounded-lg hover:bg-indigo-50 hover:text-indigo-700 flex items-center gap-2.5 transition-colors"
+                  className="w-full text-left p-2 rounded-lg hover:bg-slate-50 hover:text-brand-900 flex items-center gap-2.5 transition-colors"
                 >
-                  <div className="w-6 h-6 rounded bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-[10px]">📄</div>
+                  <div className="w-6 h-6 rounded bg-slate-100 text-brand-900 flex items-center justify-center font-bold text-[10px]">📄</div>
                   <div>
                     <div className="font-bold text-slate-800">ALT-S Letterhead Editor</div>
                     <div className="text-[10px] text-slate-500">Multi-page A4 templates</div>
                   </div>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setShowProfileMenu(false);
+                    onLogout && onLogout();
+                  }}
+                  className="w-full text-left p-2 rounded hover:bg-rose-50 text-rose-600 transition-colors flex items-center justify-between mt-1"
+                >
+                  <span className="font-semibold">Sign Out</span>
                 </button>
               </div>
             </div>
@@ -110,14 +122,12 @@ export const Header: React.FC<HeaderProps> = ({
             onClick={() => onNavigate && onNavigate('signature')}
             className={`relative px-3 py-1.5 rounded font-medium transition-colors ${
               activeTab === 'signature'
-                ? 'text-[#0052cc] font-semibold'
+                ? 'text-brand-900 font-semibold bg-slate-100'
                 : 'text-[#42526e] hover:bg-[#ebecf0]'
             }`}
           >
             Document Signing
-            {activeTab === 'signature' && (
-              <span className="absolute bottom-[-9px] left-3 right-3 h-[3px] bg-[#0052cc] rounded-full" />
-            )}
+            {activeTab === 'signature' && null}
           </button>
 
           {currentRole === 'hr' && (
@@ -125,14 +135,12 @@ export const Header: React.FC<HeaderProps> = ({
               onClick={() => onNavigate && onNavigate('builder')}
               className={`relative px-3 py-1.5 rounded font-medium transition-colors ${
                 activeTab === 'builder'
-                  ? 'text-[#0052cc] font-semibold'
+                  ? 'text-brand-900 font-semibold bg-slate-100'
                   : 'text-[#42526e] hover:bg-[#ebecf0]'
               }`}
             >
               Letterhead Editor
-              {activeTab === 'builder' && (
-                <span className="absolute bottom-[-9px] left-3 right-3 h-[3px] bg-[#0052cc] rounded-full" />
-              )}
+              {activeTab === 'builder' && null}
             </button>
           )}
 
@@ -159,7 +167,7 @@ export const Header: React.FC<HeaderProps> = ({
         {currentRole === 'hr' && (
           <button
             onClick={onOpenCreate}
-            className="bg-[#0052cc] hover:bg-[#0065ff] active:bg-[#0747a6] text-white text-[11px] font-semibold px-2 py-1 rounded flex items-center gap-1.5 shadow-xs transition-colors"
+            className="bg-brand-900 hover:bg-brand-800 active:bg-brand-950 text-white text-[11px] font-semibold px-2 py-1 rounded flex items-center gap-1.5 shadow-xs transition-colors"
           >
             <Plus size={14} />
             <span>New Document</span>
@@ -178,7 +186,7 @@ export const Header: React.FC<HeaderProps> = ({
             onClick={() => setShowProfileMenu(!showProfileMenu)}
             className="flex items-center gap-2 pl-2 border-l border-[#ebecf0] hover:opacity-80 transition-opacity"
           >
-            <div className="w-6 h-6 rounded-full bg-[#0052cc] text-white text-[11px] font-bold flex items-center justify-center shadow-xs">
+            <div className="w-6 h-6 rounded-full bg-brand-900 text-white text-[11px] font-bold flex items-center justify-center shadow-xs">
               {currentRole === 'siva_kumar' ? 'SK' : currentRole === 'uma_mageshwari' ? 'UM' : 'HR'}
             </div>
             <div className="hidden lg:flex flex-col text-left leading-tight">
@@ -194,13 +202,13 @@ export const Header: React.FC<HeaderProps> = ({
           {showProfileMenu && (
             <div className="absolute top-10 right-0 w-52 bg-white rounded-xl shadow-2xl border border-slate-200 p-3 z-50 text-xs animate-in zoom-in-95 duration-150">
               <div className="pb-2 border-b border-slate-100">
-                <p className="font-bold text-slate-900">
+                <p className="font-bold text-brand-900">
                   {currentRole === 'siva_kumar' ? 'Siva Kumar' : currentRole === 'uma_mageshwari' ? 'Uma Mageshwari' : 'ALT-S HR Operations'}
                 </p>
                 <p className="text-[10px] text-slate-500">
                   {currentRole === 'siva_kumar' ? 'director@alt-s.com' : currentRole === 'uma_mageshwari' ? 'bod@alt-s.com' : 'hr@alt-s.com'}
                 </p>
-                <span className="inline-block mt-1 px-1.5 py-0.5 bg-emerald-50 text-emerald-700 font-bold text-[9px] rounded border border-emerald-200">
+                <span className="inline-block mt-1 px-1.5 py-0.5 bg-emerald-50 text-brand-900 font-bold text-[9px] rounded border border-emerald-200">
                   ● Enterprise Active
                 </span>
               </div>
@@ -218,10 +226,20 @@ export const Header: React.FC<HeaderProps> = ({
                     setShowProfileMenu(false);
                     onExpireSession && onExpireSession();
                   }}
-                  className="w-full text-left p-2 rounded hover:bg-amber-50 text-slate-700 hover:text-amber-700 transition-colors flex items-center justify-between"
+                  className="w-full text-left p-2 rounded hover:bg-amber-50 text-slate-700 hover:text-brand-900 transition-colors flex items-center justify-between"
                 >
                   <span className="font-semibold">Lock Session</span>
-                  <span className="text-[10px] bg-amber-100 text-amber-700 px-1 rounded">UX Test</span>
+                  <span className="text-[10px] bg-slate-100 text-brand-900 px-1 rounded">UX Test</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setShowProfileMenu(false);
+                    onLogout && onLogout();
+                  }}
+                  className="w-full text-left p-2 rounded hover:bg-rose-50 text-rose-600 transition-colors flex items-center justify-between mt-1"
+                >
+                  <span className="font-semibold">Sign Out</span>
                 </button>
               </div>
             </div>

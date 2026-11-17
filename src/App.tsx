@@ -4,6 +4,7 @@ import { Header } from './components/Header';
 import { DocumentBuilder } from './components/DocumentBuilder';
 import { SignatureCenter } from './components/SignatureCenter';
 import { ApprovalWorkflow } from './components/ApprovalWorkflow';
+import { DraftsManager } from './components/DraftsManager';
 import { AuthScreens } from './components/AuthScreens';
 import { SecureSharingModal } from './components/SecureSharingModal';
 import { SessionExpiredModal } from './components/SessionExpiredModal';
@@ -16,20 +17,24 @@ export function App() {
   const [currentTab, setCurrentTab] = useState('signature');
   const [selectedTemplate, setSelectedTemplate] = useState('offer_letter');
   const [collapsed, setCollapsed] = useState(false);
-  const [currentRole, setCurrentRole] = useState<UserRole>('hr');
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentRole, setCurrentRole] = useState<UserRole>(() => (localStorage.getItem('signhr_auth_role') as UserRole) || 'hr');
+  const [isAuthenticated, setIsAuthenticated] = useState(() => localStorage.getItem('signhr_auth_status') === 'true');
   const [isSessionExpired, setIsSessionExpired] = useState(false);
   const [shareModalDocId, setShareModalDocId] = useState<string | null>(null);
 
   // Navigation Payloads
   const [signatureDocId, setSignatureDocId] = useState<string | undefined>();
   const [verificationDocNumber, setVerificationDocNumber] = useState<string>('DOC-2026-000124');
+  // Increment to force DocumentBuilder remount (guarantees clean state on New Document)
+  const [builderKey, setBuilderKey] = useState<number>(0);
 
   // Reactive DB States
   const [documents, setDocuments] = useState(DatabaseService.getDocuments());
 
-  // Subscribe to DB updates
+  // Subscribe to DB updates and hydrate from Supabase
   useEffect(() => {
+    DatabaseService.hydrateFromSupabase();
+    
     const unsubscribe = DatabaseService.subscribe(() => {
       setDocuments(DatabaseService.getDocuments());
     });
@@ -38,7 +43,7 @@ export function App() {
 
   // Redirect if role changes to restricted tabs
   useEffect(() => {
-    if (currentRole !== 'hr' && currentTab === 'builder') {
+    if (currentRole !== 'hr' && (currentTab === 'builder' || currentTab === 'drafts')) {
       setCurrentTab('approval');
     }
   }, [currentRole, currentTab]);
@@ -49,11 +54,15 @@ export function App() {
     setCurrentTab(tab);
   };
 
+  const draftsCount = documents.filter(d => d.status === 'draft').length;
+
   if (!isAuthenticated) {
     return (
       <AuthScreens 
         onLogin={(role) => {
           setCurrentRole(role);
+          localStorage.setItem('signhr_auth_role', role);
+          localStorage.setItem('signhr_auth_status', 'true');
           DatabaseService.setSessionRole(role);
           setIsAuthenticated(true);
         }} 
@@ -69,14 +78,23 @@ export function App() {
         activeTab={currentTab}
         onOpenCreate={() => {
           setSelectedTemplate('offer_letter');
-          setCurrentTab('signature');
+          setSignatureDocId(undefined);
+          setBuilderKey(k => k + 1); // Force remount → clean landing screen
+          setCurrentTab('builder');
         }}
         currentRole={currentRole}
         onRoleChange={(role) => {
           setCurrentRole(role);
+          localStorage.setItem('signhr_auth_role', role);
+          localStorage.setItem('signhr_auth_status', 'true');
           DatabaseService.setSessionRole(role);
         }}
         onExpireSession={() => setIsSessionExpired(true)}
+        onLogout={() => {
+          localStorage.removeItem('signhr_auth_role');
+          localStorage.removeItem('signhr_auth_status');
+          setIsAuthenticated(false);
+        }}
       />
 
       {/* Main Container: Sidebar + Content Canvas */}
@@ -90,6 +108,7 @@ export function App() {
           activeDocTemplate={selectedTemplate}
           onSelectDocTemplate={(tpl) => setSelectedTemplate(tpl)}
           currentRole={currentRole}
+          draftsCount={draftsCount}
         />
 
         {/* Content Area */}
@@ -107,9 +126,33 @@ export function App() {
           {currentTab === 'builder' && currentRole === 'hr' && (
             <div className="flex-1 h-full overflow-hidden">
               <DocumentBuilder
+                key={`builder-${builderKey}-${signatureDocId ?? 'new'}`}
                 initialTemplateId={selectedTemplate}
-                onSaveSuccess={() => handleNavigate('signature')}
+                initialDocId={signatureDocId}
+                onSaveSuccess={() => handleNavigate('drafts')}
+                onRequestSignatureSuccess={(docId) => handleNavigate('approval')}
               />
+            </div>
+          )}
+
+          {currentTab === 'drafts' && currentRole === 'hr' && (
+            <div className="flex-1 h-full overflow-y-auto p-6 bg-[#f4f5f7]">
+              <div className="max-w-6xl mx-auto">
+                <DraftsManager
+                  documents={documents}
+                  onContinueEditing={(doc) => {
+                    // Always open in the DocumentBuilder editor so branding is preserved
+                    setSignatureDocId(doc.id);
+                    setCurrentTab('builder');
+                  }}
+                  onOpenCreate={() => {
+                    setSelectedTemplate('offer_letter');
+                    setSignatureDocId(undefined);
+                    setBuilderKey(k => k + 1); // Force remount → clean landing screen
+                    setCurrentTab('builder');
+                  }}
+                />
+              </div>
             </div>
           )}
 
@@ -129,7 +172,7 @@ export function App() {
           )}
 
           {/* 404 Fallback State */}
-          {currentTab !== 'signature' && currentTab !== 'builder' && currentTab !== 'approval' && (
+          {currentTab !== 'signature' && currentTab !== 'builder' && currentTab !== 'approval' && currentTab !== 'drafts' && (
             <NotFoundScreen onGoHome={() => setCurrentTab('signature')} />
           )}
 

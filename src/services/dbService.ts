@@ -8,6 +8,7 @@ import {
 } from '../data/seededData';
 import { supabase as _supabase, isSupabaseConfigured as _isSupabaseConfigured } from './supabaseClient';
 import { CryptoService } from './cryptoService';
+import { SupabaseSync } from './SupabaseSync';
 
 const STORAGE_KEYS = {
   EMPLOYEES: 'smartdoc_employees_v1',
@@ -21,6 +22,24 @@ const STORAGE_KEYS = {
 
 export class DatabaseService {
   private static subscribers: (() => void)[] = [];
+  private static memoryFallback: Record<string, string> = {};
+
+  private static safeSetItem(key: string, value: string) {
+    try {
+      localStorage.setItem(key, value);
+    } catch (e: any) {
+      console.warn(`LocalStorage quota exceeded for ${key}. Falling back to in-memory storage.`);
+      DatabaseService.memoryFallback[key] = value;
+    }
+  }
+
+  private static safeGetItem(key: string): string | null {
+    if (DatabaseService.memoryFallback[key]) {
+      return DatabaseService.memoryFallback[key];
+    }
+    return localStorage.getItem(key);
+  }
+
 
   static setSessionRole(role: UserRole) {
     localStorage.setItem('secure_session_role', role);
@@ -45,6 +64,44 @@ export class DatabaseService {
     this.subscribers.forEach(cb => cb());
   }
 
+  static async hydrateFromSupabase() {
+    const data = await SupabaseSync.pullAllData();
+    if (!data) return;
+
+    // Load data into local memory cache and notify
+    if (data.documents) {
+      const mappedDocs = data.documents.map(d => ({
+        id: d.id,
+        documentNumber: d.document_number,
+        title: d.title,
+        category: d.category,
+        companyId: d.company_id,
+        personName: d.person_name,
+        personEmail: d.person_email,
+        personRole: d.person_role,
+        templateVersionId: d.template_version_id,
+        templateVersionNumber: d.template_version_number,
+        status: d.status,
+        variableValues: d.variable_values,
+        documentHash: d.document_hash,
+        originalHash: d.original_hash,
+        isTampered: d.is_tampered,
+        qrVerificationCode: d.qr_verification_code,
+        verificationUrl: d.verification_url,
+        generatedAt: d.generated_at,
+        generatedBy: d.generated_by,
+        signedAt: d.signed_at,
+        createdAt: d.created_at,
+        updatedAt: d.updated_at
+      }));
+      this.safeSetItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(mappedDocs));
+    }
+    
+    // We notify subscribers after hydrating
+    this.notifySubscribers();
+  }
+
+
   // --- EMPLOYEES ---
   static getEmployees(): Employee[] {
     const data = localStorage.getItem(STORAGE_KEYS.EMPLOYEES);
@@ -66,6 +123,7 @@ export class DatabaseService {
     localStorage.setItem(STORAGE_KEYS.EMPLOYEES, JSON.stringify(employees));
     this.logAuditAction('Super Admin', 'uma_mageshwari', 'Added Employee', `Created employee profile for ${newEmp.fullName} (${newEmp.employeeId})`);
     this.notifySubscribers();
+    SupabaseSync.pushEmployee(newEmp);
     return newEmp;
   }
 
@@ -188,10 +246,10 @@ export class DatabaseService {
 
   // --- DOCUMENTS ---
   static getDocuments(): SmartDocument[] {
-    const data = localStorage.getItem(STORAGE_KEYS.DOCUMENTS);
+    const data = this.safeGetItem(STORAGE_KEYS.DOCUMENTS);
     let docs: SmartDocument[] = [];
     if (!data) {
-      localStorage.setItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(INITIAL_DOCUMENTS));
+      this.safeSetItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(INITIAL_DOCUMENTS));
       docs = INITIAL_DOCUMENTS;
     } else {
       docs = JSON.parse(data);
@@ -243,7 +301,7 @@ export class DatabaseService {
     };
 
     documents.unshift(newDoc);
-    localStorage.setItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(documents));
+    this.safeSetItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(documents));
     this.logAuditAction(
       docData.generatedBy, 
       'hr', 
@@ -292,7 +350,7 @@ export class DatabaseService {
     }
 
     documents[index] = doc;
-    localStorage.setItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(documents));
+    this.safeSetItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(documents));
     this.logAuditAction(
       userName,
       userRole,
@@ -312,7 +370,7 @@ export class DatabaseService {
     documentId: string,
     signatoryRole: string, // 'siva_kumar' | 'uma_mageshwari'
     signatoryEmail: string,
-    method: 'otp' = 'otp'
+    method: 'otp' | 'direct' = 'otp'
   ): import('../types').SmartDocument {
     const documents = this.getDocuments();
     const index = documents.findIndex(d => d.id === documentId);
@@ -354,7 +412,7 @@ export class DatabaseService {
     }
     
     documents[index] = doc;
-    localStorage.setItem('doc-signing-documents', JSON.stringify(documents));
+    this.safeSetItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(documents));
     
     this.logAuditAction(
       'System',
@@ -371,18 +429,180 @@ export class DatabaseService {
     return doc;
   }
 
+  // --- DRAFTS & DOCUMENT MANAGEMENT ---
+  static getDrafts(): SmartDocument[] {
+    const docs = this.getDocuments();
+    return docs
+      .filter(d => d.status === 'draft')
+      .sort((a, b) => new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime());
+  }
+
+  static async saveDraft(
+    draftData: Partial<SmartDocument> & { title: string },
+    existingDocId?: string
+  ): Promise<SmartDocument> {
+    const documents: SmartDocument[] = JSON.parse(this.safeGetItem(STORAGE_KEYS.DOCUMENTS) || '[]');
+
+    const targetId = existingDocId || draftData.id;
+    const existingIndex = targetId ? documents.findIndex(d => d.id === targetId) : -1;
+
+    // Hash content
+    const rawContentStr = JSON.stringify(draftData.variableValues || {});
+    const hash = await CryptoService.generateSHA256(rawContentStr);
+    const now = new Date().toISOString();
+
+    if (existingIndex !== -1) {
+      // UPDATE EXISTING DRAFT (same document ID, no duplicates)
+      const existing = documents[existingIndex];
+      const updatedDoc: SmartDocument = {
+        ...existing,
+        ...draftData,
+        id: existing.id,
+        documentNumber: existing.documentNumber,
+        status: 'draft',
+        documentHash: hash,
+        updatedAt: now,
+        // Preserve signatures and approval workflow if not supplied
+        signatures: existing.signatures || [],
+        approvalWorkflow: draftData.approvalWorkflow || existing.approvalWorkflow || {
+          id: `wf-${Date.now()}`,
+          documentId: existing.id,
+          currentStepIndex: 0,
+          steps: [],
+          status: 'in_progress'
+        },
+        variableValues: {
+          ...(existing.variableValues || {}),
+          ...(draftData.variableValues || {})
+        }
+      };
+
+      documents[existingIndex] = updatedDoc;
+      this.safeSetItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(documents));
+
+      this.logAuditAction(
+        draftData.generatedBy || 'HR Admin',
+        'hr',
+        'Draft Updated',
+        `Draft document ${updatedDoc.documentNumber} (${updatedDoc.title}) updated.`,
+        updatedDoc.id,
+        updatedDoc.documentNumber,
+        'draft',
+        'draft'
+      );
+
+      this.notifySubscribers();
+      return updatedDoc;
+    } else {
+      // CREATE NEW DRAFT
+      const docNumber = `DOC-2026-${String(documents.length + 125).padStart(6, '0')}`;
+      const newId = targetId || `doc-${Date.now()}`;
+
+      const newDraft: SmartDocument = {
+        id: newId,
+        documentNumber: docNumber,
+        title: draftData.title || 'Untitled Draft Document',
+        category: draftData.category || 'appointment_letter',
+        companyId: draftData.companyId || 'alt_s',
+        employeeId: draftData.employeeId,
+        contractorId: draftData.contractorId,
+        personName: draftData.personName || 'Candidate / Employee',
+        personEmail: draftData.personEmail || 'hr@alt-s.com',
+        personRole: draftData.personRole || 'Employee',
+        templateVersionId: draftData.templateVersionId || 'draft',
+        templateVersionNumber: draftData.templateVersionNumber || '1.0',
+        status: 'draft',
+        variableValues: draftData.variableValues || {},
+        documentHash: hash,
+        originalHash: hash,
+        isTampered: false,
+        qrVerificationCode: docNumber,
+        verificationUrl: `/verify/${docNumber}`,
+        generatedAt: now,
+        generatedBy: draftData.generatedBy || 'HR Admin',
+        createdAt: now,
+        updatedAt: now,
+        signatures: [],
+        authorizations: [],
+        approvalWorkflow: draftData.approvalWorkflow || {
+          id: `wf-${Date.now()}`,
+          documentId: newId,
+          currentStepIndex: 0,
+          steps: [],
+          status: 'in_progress'
+        }
+      };
+
+      documents.unshift(newDraft);
+      this.safeSetItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(documents));
+
+      this.logAuditAction(
+        newDraft.generatedBy,
+        'hr',
+        'Draft Created',
+        `New draft created: ${newDraft.title} (${docNumber}).`,
+        newDraft.id,
+        docNumber,
+        'None',
+        'draft'
+      );
+
+      this.notifySubscribers();
+      return newDraft;
+    }
+  }
+
+  static async updateDocument(id: string, updates: Partial<SmartDocument>): Promise<SmartDocument> {
+    const documents: SmartDocument[] = JSON.parse(this.safeGetItem(STORAGE_KEYS.DOCUMENTS) || '[]');
+    const index = documents.findIndex(d => d.id === id);
+    if (index === -1) throw new Error('Document not found');
+
+    const updated = {
+      ...documents[index],
+      ...updates,
+      updatedAt: new Date().toISOString()
+    };
+    documents[index] = updated;
+    this.safeSetItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(documents));
+    this.notifySubscribers();
+    return updated;
+  }
+
+  static deleteDocument(id: string): void {
+    let documents: SmartDocument[] = JSON.parse(this.safeGetItem(STORAGE_KEYS.DOCUMENTS) || '[]');
+    const doc = documents.find(d => d.id === id);
+    documents = documents.filter(d => d.id !== id);
+    this.safeSetItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(documents));
+
+    // Remove signature requests associated with this doc
+    const reqs = this.getSignatureRequests().filter(r => r.documentId !== id);
+    this.saveSignatureRequests(reqs);
+
+    if (doc) {
+      this.logAuditAction(
+        'HR Admin',
+        'hr',
+        'Document Deleted',
+        `Deleted draft/document ${doc.documentNumber} (${doc.title})`,
+        doc.id,
+        doc.documentNumber
+      );
+    }
+    this.notifySubscribers();
+  }
+
 
   // ─────────────────────────────────────────────────────────────────
   // SIGNATURE REQUESTS  (HR → Siva/Uma → OTP → HR unlocks signature)
   // ─────────────────────────────────────────────────────────────────
 
   static getSignatureRequests(): import('../types').SignatureRequest[] {
-    const raw = localStorage.getItem('smartdoc_sig_requests_v1');
+    const raw = this.safeGetItem('smartdoc_sig_requests_v1');
     return raw ? JSON.parse(raw) : [];
   }
 
   private static saveSignatureRequests(reqs: import('../types').SignatureRequest[]) {
-    localStorage.setItem('smartdoc_sig_requests_v1', JSON.stringify(reqs));
+    this.safeSetItem('smartdoc_sig_requests_v1', JSON.stringify(reqs));
     this.notifySubscribers();
   }
 
@@ -438,7 +658,7 @@ export class DatabaseService {
           status: 'pending'
         });
       }
-      localStorage.setItem('smartdoc_documents_v1', JSON.stringify(docs));
+      this.safeSetItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(docs));
     }
 
     this.logAuditAction(requestedBy, 'hr', 'Signature Request Sent',
@@ -502,27 +722,6 @@ export class DatabaseService {
     return reqs[i];
   }
 
-  static authorizeDocumentSignatory(documentId: string, signatoryRole: string, signatoryEmail: string) {
-    const documents = this.getDocuments();
-    const index = documents.findIndex(d => d.id === documentId);
-    if (index === -1) throw new Error('Document not found');
-    
-    const doc = documents[index];
-    if (!doc.authorizations) doc.authorizations = [];
-    
-    // Add the authorization
-    doc.authorizations.push({
-      id: `auth-${Date.now()}`,
-      signatoryRole: signatoryRole,
-      signatoryName: signatoryRole === 'siva_kumar' ? 'Siva Kumar' : 'Uma Mageshwari',
-      authorizedAt: new Date().toISOString()
-    });
-    
-    documents[index] = doc;
-    localStorage.setItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(documents));
-    this.notifySubscribers();
-  }
-
   static getRequestsForSigner(role: 'siva_kumar' | 'uma_mageshwari'): import('../types').SignatureRequest[] {
     return this.getSignatureRequests().filter((r: any) => r.signatoryRole === role);
   }
@@ -549,7 +748,7 @@ export class DatabaseService {
     doc.updatedAt = new Date().toISOString();
     
     documents[index] = doc;
-    localStorage.setItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(documents));
+    this.safeSetItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(documents));
     
     this.logAuditAction(
       userName,
@@ -595,7 +794,7 @@ export class DatabaseService {
       }
       
       documents[index] = doc;
-      localStorage.setItem('doc-signing-documents', JSON.stringify(documents));
+      this.safeSetItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(documents));
       
       this.logAuditAction(
         hrUserName,
@@ -654,7 +853,7 @@ export class DatabaseService {
 
     doc.updatedAt = new Date().toISOString();
     documents[index] = doc;
-    localStorage.setItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(documents));
+    this.safeSetItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(documents));
     this.logAuditAction(
       userName,
       userRole,
@@ -681,7 +880,7 @@ export class DatabaseService {
     doc.updatedAt = new Date().toISOString();
 
     documents[index] = doc;
-    localStorage.setItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(documents));
+    this.safeSetItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(documents));
     this.logAuditAction('System Security Audit', 'hr', ' TAMPER DETECTED', `Document hash mismatch simulated for ${doc.documentNumber}`);
     this.notifySubscribers();
     return doc;
@@ -698,7 +897,7 @@ export class DatabaseService {
     doc.updatedAt = new Date().toISOString();
 
     documents[index] = doc;
-    localStorage.setItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(documents));
+    this.safeSetItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(documents));
     this.logAuditAction('System Security Audit', 'hr', 'Integrity Restored', `Restored original SHA-256 hash for ${doc.documentNumber}`);
     this.notifySubscribers();
     return doc;

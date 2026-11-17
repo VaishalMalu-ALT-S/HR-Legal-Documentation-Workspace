@@ -129,18 +129,6 @@ export interface DocumentAuthorization {
 }
 
 
-export interface DocumentAuthorization {
-  id: string;
-  documentId: string;
-  signatoryRole: string; // 'siva_kumar' | 'uma_mageshwari'
-  signatoryName: string;
-  signatoryEmail: string;
-  method: 'otp' | 'direct';
-  authorizedAt: string;
-  usedAt?: string;
-  usedByRole?: string; // e.g. 'hr'
-}
-
 // ── Signature Request ──────────────────────────────────────────────
 // HR creates this to request signature authorization from Siva/Uma.
 // The signer views the document, clicks Approve, gets an OTP.

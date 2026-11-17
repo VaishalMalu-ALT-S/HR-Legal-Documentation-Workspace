@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { UploadCloud, FileText, ArrowLeft, Loader2, Send } from 'lucide-react';
+import { UploadCloud, FileText, ArrowLeft, Loader2, Send, Bookmark } from 'lucide-react';
 import * as mammoth from 'mammoth';
 import html2canvas from 'html2canvas';
 import { DatabaseService } from '../services/dbService';
@@ -11,6 +11,7 @@ export const DocumentUploader: React.FC<{ onSwitch: () => void; onSaveSuccess: (
   const [pages, setPages] = useState<string[]>([]);
   const [approver, setApprover] = useState<'siva_kumar' | 'uma_mageshwari' | 'both'>('siva_kumar');
   const [docTitle, setDocTitle] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   const processDoc = useCallback(async (f: File) => {
     setIsProcessing(true);
@@ -55,6 +56,38 @@ export const DocumentUploader: React.FC<{ onSwitch: () => void; onSaveSuccess: (
     }
   }, []);
 
+  const handleSaveDraftOnly = async () => {
+    if (!file || pages.length === 0) return;
+    try {
+      setIsSaving(true);
+      const created = await DatabaseService.saveDraft({
+        title: docTitle || file.name,
+        category: 'other' as DocumentCategory,
+        companyId: 'alt_s',
+        personName: 'Uploaded Document',
+        personEmail: 'hr@alt-s.com',
+        personRole: 'N/A',
+        templateVersionId: 'uploaded',
+        templateVersionNumber: '1.0',
+        status: 'draft',
+        variableValues: {
+          uploadedImages: JSON.stringify(pages),
+          pages: JSON.stringify(pages),
+          isUploaded: 'true',
+          originalFileName: file.name
+        },
+        generatedAt: new Date().toISOString(),
+        generatedBy: 'HR Admin'
+      });
+      alert(`Draft "${created.title}" saved successfully! You can resume editing it from Drafts anytime.`);
+      onSaveSuccess();
+    } catch (e: any) {
+      alert('Error saving draft: ' + e.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleSend = async () => {
     if (!file || pages.length === 0) return;
 
@@ -77,7 +110,6 @@ export const DocumentUploader: React.FC<{ onSwitch: () => void; onSaveSuccess: (
     }
 
     try {
-      // Use DatabaseService.createDocument so correct storage key is used and subscribers notified
       const created = await DatabaseService.createDocument({
         title: docTitle || file.name,
         category: 'other' as DocumentCategory,
@@ -104,7 +136,6 @@ export const DocumentUploader: React.FC<{ onSwitch: () => void; onSaveSuccess: (
         authorizations: []
       } as any);
 
-      // Create signature requests so Siva / Uma see the approval request in their Signature Requests portal
       if (approver === 'siva_kumar' || approver === 'both') {
         DatabaseService.createSignatureRequest(created.id, 'siva_kumar', 'siva@alt-s.com', 'HR Admin');
       }
@@ -136,13 +167,23 @@ export const DocumentUploader: React.FC<{ onSwitch: () => void; onSaveSuccess: (
         </div>
 
         {pages.length > 0 && (
-          <button
-            onClick={handleSend}
-            className="flex items-center gap-2 px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded font-bold shadow-sm transition-colors text-sm"
-          >
-            <Send size={14} />
-            <span>Send for Approval</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleSaveDraftOnly}
+              disabled={isSaving}
+              className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 rounded-lg font-bold shadow-xs transition-colors text-xs disabled:opacity-50"
+            >
+              <Bookmark size={13} className="text-slate-500" />
+              <span>{isSaving ? 'Saving...' : 'Save Draft'}</span>
+            </button>
+            <button
+              onClick={handleSend}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold shadow-sm transition-colors text-xs"
+            >
+              <Send size={13} />
+              <span>Request Signature</span>
+            </button>
+          </div>
         )}
       </div>
 

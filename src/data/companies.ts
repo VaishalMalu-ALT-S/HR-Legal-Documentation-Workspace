@@ -48,7 +48,7 @@ export const COMPANIES: CompanyBrand[] = [
     logoUrl: '/altslogo.png',
     headerText: 'ALT-S TECHNOLOGY PRIVATE LIMITED',
     footerText: 'ALT-S Technology Private Limited • All Rights Reserved',
-    themeColor: '#4f46e5',
+    themeColor: '#0a3161',
     address: 'No. 4, Mullai Street, Thiruvalluvar Nagar,\nKamarajnagar, Poonamallee, Tiruvallur,\nTamil Nadu - 600071, INDIA',
     phone: '+91 78455 03084',
     email: 'info@alt-s.in',

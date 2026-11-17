@@ -1,10 +1,11 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import {
-  Upload, Download, Pen, Move, X,
+  Upload, Download, Pen, Move, X, UploadCloud,
   RotateCcw, RotateCw, Crop, Sun, Contrast, Layers,
   Eraser, ZoomIn, ZoomOut, Send, Plus, CheckCircle2,
   Settings, RefreshCw, Eye,
-  FolderOpen, Maximize2, Calendar, Stamp, Lock, Unlock
+  FolderOpen, Maximize2, Calendar, Stamp, Lock, Unlock,
+  Bookmark, FileText, Clock
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -123,10 +124,10 @@ function CropModal({ src, onCrop, onCancel }: {
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl shadow-2xl p-5 max-w-lg w-full border border-slate-200">
+      <div className="bg-white rounded-lg shadow-md p-5 max-w-lg w-full border border-slate-200">
         <div className="flex justify-between items-center mb-3">
           <div>
-            <h3 className="font-bold text-slate-900 text-sm">Crop Signature Area</h3>
+            <h3 className="font-bold text-brand-900 text-sm">Crop Signature Area</h3>
             <p className="text-xs text-slate-500">Drag to box the signature tightly</p>
           </div>
           <button onClick={onCancel} className="p-1 hover:bg-slate-100 rounded text-slate-400 hover:text-slate-700">
@@ -144,7 +145,7 @@ function CropModal({ src, onCrop, onCancel }: {
           <div className="absolute inset-0 bg-black/40 pointer-events-none" />
           {sel.w > 0 && sel.h > 0 && (
             <div
-              className="absolute border-2 border-[#0052cc] bg-[#0052cc]/20 pointer-events-none shadow-sm"
+              className="absolute border-2 border-brand-900 bg-brand-900/20 pointer-events-none shadow-sm"
               style={{
                 left: `${sel.x * 100}%`,
                 top: `${sel.y * 100}%`,
@@ -161,7 +162,7 @@ function CropModal({ src, onCrop, onCancel }: {
           </button>
           <button
             onClick={() => onCrop(sel.x, sel.y, sel.w || 1, sel.h || 1)}
-            className="flex-1 py-1.5 rounded-md bg-[#0052cc] text-white text-xs font-bold hover:bg-[#0065ff] shadow-sm"
+            className="flex-1 py-1.5 rounded-md bg-brand-900 text-white text-xs font-bold hover:bg-brand-800 shadow-sm"
           >
             Apply Crop
           </button>
@@ -204,13 +205,22 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
       approverName = 'Uma Mageshwari';
       approverTitle = 'Board of Director';
   }
-  // Document state
+  // Document state & Draft management
+  const [currentDocId, setCurrentDocId] = useState<string | undefined>(preselectedDocId || targetDoc?.id);
+  const [initializedDocId, setInitializedDocId] = useState<string | null>(null);
   const [docPages, setDocPages] = useState<string[]>([]);
   const [hasUploadedDoc, setHasUploadedDoc] = useState(false);
   const [docName, setDocName] = useState('Offer_Letter_Vrutika_Prajapati.pdf');
   const [currentPage, setCurrentPage] = useState(0);
   const [docLoading, setDocLoading] = useState(false);
   const [_error, setError] = useState<string | null>(null);
+
+  // Draft & Save Status
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
+  const [lastSavedTime, setLastSavedTime] = useState<string | null>(null);
+  const [saveFeedback, setSaveFeedback] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   // ── Request Signature dialog state
   const [showReqSigDialog, setShowReqSigDialog] = useState(false);
@@ -222,37 +232,78 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
   const [docSigRequests, setDocSigRequests] = useState<SignatureRequest[]>([]);
 
   useEffect(() => {
+    const docIdToTrack = currentDocId || targetDoc?.id;
     const reload = () => {
-      if (targetDoc?.id) {
-        setDocSigRequests(DatabaseService.getRequestsForDocument(targetDoc.id));
+      if (docIdToTrack) {
+        setDocSigRequests(DatabaseService.getRequestsForDocument(docIdToTrack));
       }
     };
     reload();
     return DatabaseService.subscribe(reload);
-  }, [targetDoc?.id]);
+  }, [currentDocId, targetDoc?.id]);
 
   useEffect(() => {
-    if (targetDoc?.variableValues?.uploadedImages) {
+    if (preselectedDocId) {
+      setCurrentDocId(preselectedDocId);
+    }
+  }, [preselectedDocId]);
+
+  useEffect(() => {
+    if (!targetDoc) return;
+    if (initializedDocId === targetDoc.id) return;
+
+    setInitializedDocId(targetDoc.id);
+    setCurrentDocId(targetDoc.id);
+    if (targetDoc.companyId) {
+      setSelectedCompanyId(targetDoc.companyId);
+    }
+    if (targetDoc.title) {
+      setDocName(targetDoc.title);
+    }
+    if (targetDoc.updatedAt || targetDoc.createdAt) {
+      const d = new Date(targetDoc.updatedAt || targetDoc.createdAt);
+      setLastSavedTime(d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+    }
+
+    if (targetDoc.variableValues?.uploadedImages) {
       try {
         const parsedPages = JSON.parse(targetDoc.variableValues.uploadedImages);
         if (parsedPages && parsedPages.length > 0) {
           setDocPages(parsedPages);
           setHasUploadedDoc(true);
-          setDocName(targetDoc.title || 'Uploaded Document');
         }
       } catch (e) {
         console.error("Failed to parse uploaded images", e);
       }
-    } else if (targetDoc?.variableValues?.pages && targetDoc.variableValues.isUploaded) {
+    } else if (targetDoc.variableValues?.pages && (targetDoc.variableValues.isUploaded === 'true' || targetDoc.templateVersionId === 'uploaded')) {
       try {
         const parsedPages = JSON.parse(targetDoc.variableValues.pages);
         if (parsedPages && parsedPages.length > 0) {
           setDocPages(parsedPages);
           setHasUploadedDoc(true);
-          setDocName(targetDoc.title || 'Uploaded Document');
         }
       } catch (e) {}
     }
+
+    if (targetDoc.variableValues?.sigs) {
+      try {
+        const parsedSigs = JSON.parse(targetDoc.variableValues.sigs);
+        if (Array.isArray(parsedSigs)) {
+          setSigs(parsedSigs);
+        }
+      } catch (e) {}
+    }
+
+    if (targetDoc.variableValues?.signatureRequirements) {
+      try {
+        const parsedReq = JSON.parse(targetDoc.variableValues.signatureRequirements);
+        if (parsedReq.signerRole) setReqSigSelection(parsedReq.signerRole);
+        if (parsedReq.sivaEmail) setReqSivaEmail(parsedReq.sivaEmail);
+        if (parsedReq.umaEmail) setReqUmaEmail(parsedReq.umaEmail);
+      } catch (e) {}
+    }
+
+    setIsDirty(false);
   }, [targetDoc]);
 
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>('alt_s');
@@ -282,10 +333,112 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
   const [drawing, setDrawing] = useState(false);
   const [drawModalOpen, setDrawModalOpen] = useState(false);
 
-  const updateSig = (id: string, patch: Partial<Sig>) =>
+  const updateSig = (id: string, patch: Partial<Sig>) => {
+    setIsDirty(true);
     setSigs(prev => prev.map(s => s.id === id ? { ...s, ...patch } : s));
+  };
 
   const selectedSig = sigs.find(s => s.selected);
+
+  /* ── Save Draft Handler ── */
+  const handleSaveDraft = async (silent = false): Promise<SmartDocument | null> => {
+    try {
+      setIsSaving(true);
+      setSaveError(null);
+
+      const effectiveTitle = hasUploadedDoc ? docName : (targetDoc?.title || 'Employment Document Draft');
+      let category = targetDoc?.category || 'appointment_letter';
+      const lower = effectiveTitle.toLowerCase();
+      if (lower.includes('asset')) category = 'asset_form';
+      else if (lower.includes('contract') || lower.includes('contractor')) category = 'contractor_offer';
+      else if (lower.includes('bond')) category = 'bond_agreement';
+      else if (lower.includes('acknowledg')) category = 'acknowledgement_form';
+
+      // Capture content from contentEditable if present
+      const contentEl = canvasRef.current?.querySelector('[contenteditable]');
+      const renderedHtml = contentEl ? contentEl.innerHTML : (targetDoc?.variableValues?.content || '');
+
+      const draftPayload: Partial<SmartDocument> & { title: string } = {
+        title: effectiveTitle,
+        category: category as any,
+        companyId: selectedCompanyId,
+        personName: targetDoc?.personName || 'Candidate / Employee',
+        personEmail: targetDoc?.personEmail || 'hr@alt-s.com',
+        personRole: targetDoc?.personRole || 'Employee',
+        templateVersionId: targetDoc?.templateVersionId || (hasUploadedDoc ? 'uploaded' : selectedTemplate),
+        templateVersionNumber: '1.0',
+        status: 'draft',
+        variableValues: {
+          ...(targetDoc?.variableValues || {}),
+          content: renderedHtml,
+          uploadedImages: hasUploadedDoc && docPages.length > 0 ? JSON.stringify(docPages) : (targetDoc?.variableValues?.uploadedImages || ''),
+          pages: JSON.stringify(docPages),
+          isUploaded: hasUploadedDoc ? 'true' : 'false',
+          originalFileName: docName,
+          sigs: JSON.stringify(sigs),
+          selectedCompanyId,
+          signatureRequirements: JSON.stringify({
+            signerRole: reqSigSelection,
+            sivaEmail: reqSivaEmail,
+            umaEmail: reqUmaEmail
+          })
+        },
+        generatedAt: targetDoc?.generatedAt || new Date().toISOString(),
+        generatedBy: 'HR Admin'
+      };
+
+      const saved = await DatabaseService.saveDraft(draftPayload, currentDocId);
+      setCurrentDocId(saved.id);
+      const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      setLastSavedTime(timeStr);
+      setIsDirty(false);
+
+      if (!silent) {
+        setSaveFeedback(`Draft saved safely at ${timeStr}`);
+        setTimeout(() => setSaveFeedback(null), 3500);
+      }
+      return saved;
+    } catch (err: any) {
+      console.error('Failed to save draft:', err);
+      setSaveError(err.message || 'Failed to save changes. Please try again.');
+      setTimeout(() => setSaveError(null), 5000);
+      return null;
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  /* ── Open Request Signature (saves draft first if needed) ── */
+  const handleOpenRequestSignature = async () => {
+    // If unsaved or new, save draft first so we have a persistent document ID
+    if (!currentDocId || isDirty) {
+      const saved = await handleSaveDraft(true);
+      if (!saved) return;
+    }
+    setShowReqSigDialog(true);
+    setReqSigSent(false);
+  };
+
+  // Autosave when isDirty is true and we have content (debounced 3.5 seconds)
+  useEffect(() => {
+    if (!isDirty || (!hasUploadedDoc && sigs.length === 0 && !targetDoc)) return;
+    const timer = setTimeout(() => {
+      handleSaveDraft(true);
+    }, 3500);
+    return () => clearTimeout(timer);
+  }, [isDirty, docPages, sigs, selectedCompanyId]);
+
+  // Unsaved changes warning before window close/refresh
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isDirty) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [isDirty]);
 
   /* ── Document Processing (PDF, DOCX, Image) ── */
   const processDoc = useCallback(async (file: File) => {
@@ -312,6 +465,7 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
         }
         setDocPages(pages);
         setHasUploadedDoc(true);
+        setIsDirty(true);
       } else if (ext === 'docx' || ext === 'doc') {
         const buf = await file.arrayBuffer();
         const result = await mammoth.convertToHtml({ arrayBuffer: buf });
@@ -324,6 +478,7 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
         document.body.removeChild(div);
         setDocPages([c.toDataURL('image/png')]);
         setHasUploadedDoc(true);
+        setIsDirty(true);
       } else {
         const src: string = await new Promise((res) => {
           const r = new FileReader();
@@ -332,6 +487,7 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
         });
         setDocPages([src]);
         setHasUploadedDoc(true);
+        setIsDirty(true);
       }
       setCurrentPage(0);
     } catch (err: unknown) {
@@ -348,21 +504,31 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
 
   /* ── Add Signature ── */
   const addSig = (src: string, type: 'signature' | 'stamp' | 'date' = 'signature', signatoryRole?: string) => {
-    if (type === 'signature' && signatoryRole && targetDoc) {
-      DatabaseService.recordSignaturePlacement(targetDoc.id, signatoryRole, 'Suresh Kumar');
+    setIsDirty(true);
+    if (type === 'signature' && signatoryRole && (currentDocId || targetDoc)) {
+      DatabaseService.recordSignaturePlacement(currentDocId || targetDoc!.id, signatoryRole, 'Suresh Kumar');
     }
     if (type === 'signature') {
       storeSig(src);
       setSavedSigs(getSaved());
     }
+    let yPos = 840;
+    if (canvasRef.current) {
+      const rect = canvasRef.current.getBoundingClientRect();
+      const scale = zoom / 100;
+      const screenCenterY = window.innerHeight / 2;
+      yPos = (screenCenterY - rect.top) / scale;
+      yPos = Math.max(50, yPos);
+    }
+
     setSigs(prev => [
       ...prev.map(s => ({ ...s, selected: false })),
       {
         id: `sig-${Date.now()}`,
         src,
         originalSrc: src,
-        x: 480,
-        y: 840,
+        x: 400,
+        y: yPos,
         w: type === 'stamp' ? 140 : 180,
         h: type === 'stamp' ? 60 : 75,
         rotation: 0,
@@ -552,23 +718,25 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
       );
     }
 
-    // Fallback to generating from template (should rarely happen now)
-    const templateKey = targetDoc?.category || selectedTemplate;
-
-    // Check if templateKey matches any company template ID
-    const tpl = COMPANY_TEMPLATES.find(t => t.id === templateKey) ||
-      (templateKey === 'employment_agreement' ? COMPANY_TEMPLATES.find(t => t.id === 'appointment_solution_architect') : null) ||
-      (templateKey === 'contractor_agreement' ? COMPANY_TEMPLATES.find(t => t.id === 'contractor_offer') : null) ||
-      (templateKey === 'nda_policy' ? COMPANY_TEMPLATES.find(t => t.id === 'asset_acknowledgment') : null) ||
-      COMPANY_TEMPLATES[0];
-
+    // If there is no uploaded doc and no content, this is an empty document signing session.
+    // Instead of showing a fake template, we should prompt them to upload.
     return (
-      <div
-        contentEditable
-        suppressContentEditableWarning
-        className="outline-none text-[13px] leading-relaxed cursor-text min-h-[500px]"
-        dangerouslySetInnerHTML={{ __html: tpl.content }}
-      />
+      <div className="flex flex-col items-center justify-center h-full min-h-[500px] border-2 border-dashed border-slate-300 rounded-xl bg-slate-50 p-10 text-center mx-10 my-10">
+        <div className="w-16 h-16 bg-brand-100 text-brand-900 rounded-full flex items-center justify-center mb-6">
+          <UploadCloud size={32} />
+        </div>
+        <h3 className="text-xl font-bold text-slate-800 mb-2">Upload a Document to Sign</h3>
+        <p className="text-sm text-slate-500 max-w-md mb-8">
+          Upload a PDF or Word document that you want to prepare for signing. You can drag and drop fields, signature blocks, and date stamps.
+        </p>
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          className="px-6 py-3 bg-brand-900 text-white font-bold rounded-lg hover:bg-brand-800 transition-colors shadow-sm flex items-center gap-2"
+        >
+          <Upload size={18} />
+          Browse Files
+        </button>
+      </div>
     );
   };
 
@@ -578,7 +746,7 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
       <input
         ref={fileInputRef}
         type="file"
-        accept=".pdf,.docx,.doc,.png,.jpg,.jpeg,.webp"
+        accept="application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/*,.pdf,.docx,.doc,.png,.jpg,.jpeg,.webp"
         onChange={onDocInput}
         className="hidden"
       />
@@ -594,16 +762,7 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
       <div className="h-11 border-b border-[#ebecf0] px-5 flex items-center justify-between bg-white z-20 shrink-0">
         <div className="flex items-center gap-3">
           <div className="flex items-center space-x-2 border-r border-slate-200 pr-3">
-            <span className="text-[10px] text-slate-500 font-medium">COMPANY:</span>
-            <select
-              value={selectedCompanyId}
-              onChange={(e) => setSelectedCompanyId(e.target.value)}
-              className="text-[11px] font-semibold text-slate-700 bg-white border border-slate-300 rounded px-1.5 py-0.5 outline-none hover:border-indigo-400"
-            >
-              {COMPANIES.map(c => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </select>
+             <span className="text-[11px] font-bold text-slate-800">Signing Portal</span>
           </div>
           
           <span className="text-[11px] text-[#6b778c] font-medium">
@@ -611,24 +770,80 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
           </span>
           <span className="text-slate-300">/</span>
           <span className="text-[13px] font-bold text-[#172b4d]">
-            {hasUploadedDoc ? docName : 'Official Employment Offer Letter'}
+            {hasUploadedDoc ? docName : (targetDoc?.title || 'Official Document')}
           </span>
-          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200">
-            Ready for Signing
-          </span>
+
+          {/* Status Badge */}
+          {(!targetDoc || targetDoc.status === 'draft') ? (
+            <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-300 flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+              Draft
+            </span>
+          ) : targetDoc.status === 'pending_approval' ? (
+            <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200 flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+              Signature Requested
+            </span>
+          ) : targetDoc.status === 'signature_authorized' ? (
+            <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+              Ready for Signing
+            </span>
+          ) : (
+            <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+              <CheckCircle2 size={10} className="text-emerald-600" />
+              Signed &amp; Completed
+            </span>
+          )}
+
+          {/* Last Saved Time Indicator */}
+          {lastSavedTime && (
+            <span className="text-[11px] text-slate-500 font-medium flex items-center gap-1 ml-1" title="Last saved time">
+              <Clock size={11} className="text-slate-400" />
+              {isDirty ? (
+                <span className="text-amber-600 font-semibold flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500" /> Unsaved changes
+                </span>
+              ) : (
+                <span className="text-slate-500">
+                  Last saved {lastSavedTime}
+                </span>
+              )}
+            </span>
+          )}
         </div>
 
         {/* Quick Toolbar Action Buttons */}
         <div className="flex items-center gap-2">
-          {currentRole === 'hr' && targetDoc && (
-            <button
-              onClick={() => { setShowReqSigDialog(true); setReqSigSent(false); }}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold transition-colors shadow-sm"
-            >
-              <Send size={12} />
-              Request Signature
-            </button>
+          {currentRole === 'hr' && (
+            <>
+              {/* Save Draft Button */}
+              <button
+                onClick={() => handleSaveDraft(false)}
+                disabled={isSaving}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-[11px] font-bold transition-all shadow-xs active:scale-95 disabled:opacity-60 cursor-pointer"
+                title="Save current document state as a draft without requesting signatures"
+              >
+                {isSaving ? (
+                  <RefreshCw size={12} className="animate-spin text-indigo-600" />
+                ) : (
+                  <Bookmark size={12} className="text-slate-600" />
+                )}
+                <span>{isSaving ? 'Saving Draft...' : 'Save Draft'}</span>
+              </button>
+
+              {/* Request Signature Button */}
+              <button
+                onClick={handleOpenRequestSignature}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-brand-900 hover:bg-brand-800 text-white text-[11px] font-bold transition-all shadow-sm active:scale-95 cursor-pointer"
+                title="Send document for signatory approval"
+              >
+                <Send size={12} />
+                <span>Request Signature</span>
+              </button>
+            </>
           )}
+
           <button
             onClick={() => setIsPreviewMode(!isPreviewMode)}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-[12px] font-semibold transition-colors shadow-xs border ${
@@ -640,10 +855,11 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
             <Eye size={14} />
             <span>{isPreviewMode ? 'Exit Preview' : 'Preview'}</span>
           </button>
+
           {isApproved && (
             <button
               onClick={handleDownload}
-              className="bg-[#0052cc] hover:bg-[#0065ff] text-white text-[12px] font-semibold px-4 py-1.5 rounded shadow-xs flex items-center gap-1.5 transition-colors"
+              className="bg-brand-900 hover:bg-brand-800 text-white text-[12px] font-semibold px-4 py-1.5 rounded shadow-xs flex items-center gap-1.5 transition-colors"
             >
               <Download size={14} />
               <span>Finish &amp; Save</span>
@@ -652,10 +868,24 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
         </div>
       </div>
 
+      {/* Floating Save Feedback Toast */}
+      {saveFeedback && (
+        <div className="fixed top-12 right-6 z-50 bg-emerald-700 text-white text-xs font-bold px-3.5 py-2 rounded-lg shadow-lg flex items-center gap-2 animate-in slide-in-from-top-2">
+          <CheckCircle2 size={14} />
+          <span>{saveFeedback}</span>
+        </div>
+      )}
+      {saveError && (
+        <div className="fixed top-12 right-6 z-50 bg-rose-600 text-white text-xs font-bold px-3.5 py-2 rounded-lg shadow-lg flex items-center gap-2 animate-in slide-in-from-top-2">
+          <X size={14} />
+          <span>{saveError}</span>
+        </div>
+      )}
+
       {/* ─── Request Signature Dialog ─── */}
-      {showReqSigDialog && targetDoc && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+      {showReqSigDialog && (currentDocId || targetDoc) && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-900/60 backdrop-blur-sm">
+          <div className="bg-white rounded-lg shadow-md w-full max-w-md overflow-hidden">
             <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
               <div className="flex items-center gap-2">
                 <Send size={18} className="text-indigo-600" />
@@ -670,17 +900,17 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
               <div className="p-6 text-center space-y-4">
                 <CheckCircle2 size={48} className="mx-auto text-emerald-500" />
                 <div>
-                  <p className="font-bold text-slate-900 text-lg">Request Sent!</p>
+                  <p className="font-bold text-brand-900 text-lg">Request Sent!</p>
                   <p className="text-sm text-slate-500 mt-1">
                     {reqSigSelection === 'siva_kumar' ? 'Siva Kumar' :
                      reqSigSelection === 'uma_mageshwari' ? 'Uma Mageshwari' : 'Both signers'}
                     {' '}will see the request in their Signature Requests portal.
                   </p>
                 </div>
-                <p className="text-xs text-slate-400 bg-slate-50 rounded-xl p-3">
+                <p className="text-xs text-slate-400 bg-slate-50 rounded-lg p-3">
                   Once they approve, they'll generate an OTP. Ask them to share it with you, then enter it in the <strong>Signature Requests</strong> tab to unlock the signature.
                 </p>
-                <button onClick={() => setShowReqSigDialog(false)} className="w-full py-2.5 rounded-xl bg-slate-900 text-white font-bold text-sm">
+                <button onClick={() => setShowReqSigDialog(false)} className="w-full py-2.5 rounded-lg bg-brand-900 text-white font-bold text-sm">
                   Close
                 </button>
               </div>
@@ -694,7 +924,7 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
                       { val: 'uma_mageshwari', label: 'Uma Mageshwari', subtitle: 'Director' },
                       { val: 'both', label: 'Both Signatories', subtitle: 'Siva Kumar & Uma Mageshwari' }
                     ].map(opt => (
-                      <label key={opt.val} className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${
+                      <label key={opt.val} className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
                         reqSigSelection === opt.val ? 'border-indigo-400 bg-indigo-50' : 'border-slate-200 hover:border-slate-300'
                       }`}>
                         <input type="radio" name="signer" value={opt.val} checked={reqSigSelection === opt.val}
@@ -728,20 +958,25 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
                 <button
                   onClick={() => {
                     try {
+                      const docIdToRequest = currentDocId || targetDoc?.id;
+                      if (!docIdToRequest) {
+                        alert("Please save draft before requesting signatures.");
+                        return;
+                      }
                       if (reqSigSelection === 'siva_kumar' || reqSigSelection === 'both') {
                         if (!reqSivaEmail.trim()) { alert("Please enter Siva Kumar's email."); return; }
-                        DatabaseService.createSignatureRequest(targetDoc.id, 'siva_kumar', reqSivaEmail.trim(), 'HR Admin');
+                        DatabaseService.createSignatureRequest(docIdToRequest, 'siva_kumar', reqSivaEmail.trim(), 'HR Admin');
                       }
                       if (reqSigSelection === 'uma_mageshwari' || reqSigSelection === 'both') {
                         if (!reqUmaEmail.trim()) { alert("Please enter Uma Mageshwari's email."); return; }
-                        DatabaseService.createSignatureRequest(targetDoc.id, 'uma_mageshwari', reqUmaEmail.trim(), 'HR Admin');
+                        DatabaseService.createSignatureRequest(docIdToRequest, 'uma_mageshwari', reqUmaEmail.trim(), 'HR Admin');
                       }
                       setReqSigSent(true);
                     } catch (e) {
                       alert('Error: ' + (e as any).message);
                     }
                   }}
-                  className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm flex items-center justify-center gap-2 transition-colors"
+                  className="w-full py-3 rounded-lg bg-brand-900 hover:bg-brand-800 text-white font-bold text-sm flex items-center justify-center gap-2 transition-colors"
                 >
                   <Send size={15} />
                   Send Signature Request
@@ -754,6 +989,7 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
 
       {/* ─── FULLY SCROLLABLE DOCUMENT CANVAS ─── */}
       <div
+        id="sig-scroll-container"
         className="flex-1 overflow-y-auto overflow-x-auto flex flex-col items-center py-6 px-4 min-h-0 bg-[#f4f5f7] custom-scrollbar"
         style={{
           backgroundImage: 'radial-gradient(#dfe1e6 1.2px, transparent 1.2px)',
@@ -776,7 +1012,7 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
         >
           {docLoading && (
             <div className="absolute inset-0 bg-white/85 backdrop-blur-xs flex flex-col items-center justify-center z-30">
-              <div className="w-9 h-9 border-3 border-[#0052cc] border-t-transparent rounded-full animate-spin mb-2.5" />
+              <div className="w-9 h-9 border-3 border-brand-900 border-t-transparent rounded-full animate-spin mb-2.5" />
               <p className="text-xs font-bold text-[#172b4d]">Rendering document pages...</p>
             </div>
           )}
@@ -811,7 +1047,7 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
                     <div className="flex flex-col flex-1 max-h-[75px] justify-between ml-2">
                       <div className="flex justify-end w-full">
                         <div className="border-l-[1.5px] border-slate-400 pl-2.5 py-0.5 text-[10px] leading-[1.3] text-slate-800 text-left font-sans">
-                          <p className="font-bold text-[11px] uppercase text-slate-900 border-b-[1px] border-slate-400 pb-[3px] mb-[3px]">{selectedCompany.headerText}</p>
+                          <p className="font-bold text-[11px] uppercase text-brand-900 border-b-[1px] border-slate-400 pb-[3px] mb-[3px]">{selectedCompany.headerText}</p>
                           <div className="whitespace-pre-line text-slate-800">{selectedCompany.address}</div>
                         </div>
                       </div>
@@ -890,7 +1126,7 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
               {/* Resize Handle */}
               <div
                 onMouseDown={e => onResizeDown(e, sig.id)}
-                className="absolute -bottom-2 -right-2 w-4 h-4 bg-[#0052cc] rounded-full cursor-nwse-resize opacity-0 group-hover:opacity-100 transition-opacity z-10 shadow pointer-events-auto"
+                className="absolute -bottom-2 -right-2 w-4 h-4 bg-brand-900 rounded-full cursor-nwse-resize opacity-0 group-hover:opacity-100 transition-opacity z-10 shadow pointer-events-auto"
                 title="Resize signature"
               />
             </div>
@@ -899,10 +1135,10 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
 
         {/* ── Signature Adjustment Inspector (Opens beside selected sig) ── */}
         {selectedSig && !isPreviewMode && (
-          <div className="fixed top-28 right-6 w-68 bg-white/95 backdrop-blur-md rounded-xl shadow-[0_8px_30px_rgba(9,30,66,0.18)] border border-[#dfe1e6] p-3.5 z-40 space-y-3">
+          <div className="fixed top-28 right-6 w-68 bg-white/95 backdrop-blur-md rounded-lg shadow-[0_8px_30px_rgba(9,30,66,0.18)] border border-[#dfe1e6] p-3.5 z-40 space-y-3">
             <div className="flex items-center justify-between border-b border-[#ebecf0] pb-2">
               <div className="flex items-center gap-1.5">
-                <Settings size={14} className="text-[#0052cc]" />
+                <Settings size={14} className="text-brand-900" />
                 <span className="font-bold text-[12.5px] text-[#172b4d]">Signature Adjustments</span>
               </div>
               <button
@@ -926,9 +1162,9 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
                 }`}
               >
                 {bgRemoving === selectedSig.id ? (
-                  <div className="w-3 h-3 border-2 border-[#0052cc] border-t-transparent rounded-full animate-spin" />
+                  <div className="w-3 h-3 border-2 border-brand-900 border-t-transparent rounded-full animate-spin" />
                 ) : (
-                  <Eraser size={12} className="text-[#0052cc]" />
+                  <Eraser size={12} className="text-brand-900" />
                 )}
                 <span>{selectedSig.bgRemoved ? 'Restore BG' : 'Remove BG'}</span>
               </button>
@@ -937,7 +1173,7 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
                 onClick={() => setCropModal({ sigId: selectedSig.id, src: selectedSig.src })}
                 className="flex items-center justify-center gap-1 py-1.5 px-2 rounded text-[11px] font-semibold border border-[#dfe1e6] bg-[#fafbfc] hover:bg-[#ebecf0] text-[#172b4d]"
               >
-                <Crop size={12} className="text-[#0052cc]" />
+                <Crop size={12} className="text-brand-900" />
                 <span>Crop Area</span>
               </button>
             </div>
@@ -1027,7 +1263,7 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
 
       {/* ─── Floating Whiteboard Action Palette (Fixed Center Bottom) ─── */}
       <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-30 flex items-center">
-        <div className="bg-white rounded-xl shadow-[0_6px_24px_rgba(9,30,66,0.16)] border border-[#dfe1e6] px-3 py-1.5 flex items-center gap-2.5">
+        <div className="bg-white rounded-lg shadow-[0_6px_24px_rgba(9,30,66,0.16)] border border-[#dfe1e6] px-3 py-1.5 flex items-center gap-2.5">
           {/* Hand Move Tool */}
           <button
             onClick={() => setActiveTool('select')}
@@ -1065,7 +1301,7 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
                   }`}
                   title={!(targetDoc?.authorizations?.some(a => (a.signatoryRole === 'siva_kumar' || a.signatoryRole === 'Authorized Signatory' || a.signatoryName === 'Siva Kumar') && !a.usedAt)) ? "Locked: Awaiting Manager Approval or Signature Already Used" : "Place Siva Kumar Signature"}
                 >
-                  {!(targetDoc?.authorizations?.some(a => (a.signatoryRole === 'siva_kumar' || a.signatoryRole === 'Authorized Signatory' || a.signatoryName === 'Siva Kumar') && !a.usedAt)) ? <Lock size={12} className="text-rose-500" /> : <Pen size={14} className="text-[#0052cc]" />}
+                  {!(targetDoc?.authorizations?.some(a => (a.signatoryRole === 'siva_kumar' || a.signatoryRole === 'Authorized Signatory' || a.signatoryName === 'Siva Kumar') && !a.usedAt)) ? <Lock size={12} className="text-rose-500" /> : <Pen size={14} className="text-brand-900" />}
                   <span>Siva Kumar</span>
                 </button>
               )}
@@ -1086,7 +1322,7 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
                   }`}
                   title={!(targetDoc?.authorizations?.some(a => (a.signatoryRole === 'uma_mageshwari' || a.signatoryRole === 'Authorized Signatory' || a.signatoryName === 'Uma Mageshwari') && !a.usedAt)) ? "Locked: Awaiting Manager Approval or Signature Already Used" : "Place Uma Mageshwari Signature"}
                 >
-                  {!(targetDoc?.authorizations?.some(a => (a.signatoryRole === 'uma_mageshwari' || a.signatoryRole === 'Authorized Signatory' || a.signatoryName === 'Uma Mageshwari') && !a.usedAt)) ? <Lock size={12} className="text-rose-500" /> : <Pen size={14} className="text-[#0052cc]" />}
+                  {!(targetDoc?.authorizations?.some(a => (a.signatoryRole === 'uma_mageshwari' || a.signatoryRole === 'Authorized Signatory' || a.signatoryName === 'Uma Mageshwari') && !a.usedAt)) ? <Lock size={12} className="text-rose-500" /> : <Pen size={14} className="text-brand-900" />}
                   <span>Uma Mageshwari</span>
                 </button>
               )}
@@ -1108,7 +1344,7 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
               {/* Finish & Save */}
               <button
                 onClick={handleDownload}
-                className="bg-[#0052cc] hover:bg-[#0065ff] active:bg-[#0747a6] text-white font-bold text-[11.5px] px-3.5 py-1.5 rounded-lg flex items-center gap-1.5 shadow-sm active:scale-95 transition-all"
+                className="bg-brand-900 hover:bg-brand-800 active:bg-[#0747a6] text-white font-bold text-[11.5px] px-3.5 py-1.5 rounded-lg flex items-center gap-1.5 shadow-sm active:scale-95 transition-all"
                 title="Finish & Save Document"
               >
                 <Download size={14} />
@@ -1150,7 +1386,7 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
       {/* ─── Hand-Draw Signature Modal ─── */}
       {drawModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-2xl p-5 max-w-md w-full border border-[#dfe1e6]">
+          <div className="bg-white rounded-lg shadow-md p-5 max-w-md w-full border border-[#dfe1e6]">
             <div className="flex justify-between items-center mb-3">
               <h3 className="font-bold text-[#172b4d] text-sm">Hand-Draw Digital Signature</h3>
               <button
@@ -1182,7 +1418,7 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
               </button>
               <button
                 onClick={useDraw}
-                className="flex-1 py-1.5 rounded-md bg-[#0052cc] text-white text-xs font-bold hover:bg-[#0065ff] shadow-sm"
+                className="flex-1 py-1.5 rounded-md bg-brand-900 text-white text-xs font-bold hover:bg-brand-800 shadow-sm"
               >
                 Place Signature
               </button>

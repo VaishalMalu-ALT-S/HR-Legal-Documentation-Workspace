@@ -1,12 +1,14 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
+  Send,
   Bold, Italic, Underline, Strikethrough, AlignLeft, AlignCenter,
   AlignRight, AlignJustify, List, ListOrdered, Indent, Outdent,
   Palette, Highlighter, Table, Calendar, RotateCcw,
-  RotateCw, Download, Printer, Save, FileText, UploadCloud, Check, Plus,
+  RotateCw, Download, Printer, Save, FileText, UploadCloud, Check, Plus, FileUp,
   Minus, Sparkles, Trash2, X, Stamp as StampIcon, PenTool,
   LayoutTemplate, ArrowDown, ArrowUp
-} from 'lucide-react';
+, Search, Undo, Redo} from 'lucide-react';
+import * as mammoth from 'mammoth';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 import { COMPANY_TEMPLATES } from '../data/templates';
@@ -14,7 +16,8 @@ import { COMPANIES, CompanyBrand } from '../data/companies';
 import { getAltSCorporateStamp } from '../utils/stampGenerator';
 import { DatabaseService } from '../services/dbService';
 import { DocumentCategory } from '../types';
-import { DocumentUploader } from './DocumentUploader';
+
+
 
 interface StampItem {
   id: string;
@@ -34,6 +37,7 @@ interface DocumentBuilderProps {
   initialTemplateId?: string;
   initialDocId?: string;
   onSaveSuccess?: () => void;
+  onRequestSignatureSuccess?: (docId: string) => void;
 }
 
 interface DynamicVariables {
@@ -48,28 +52,58 @@ interface DynamicVariables {
 export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
   initialTemplateId = 'asset_acknowledgment',
   initialDocId,
-  onSaveSuccess
+  onSaveSuccess,
+  onRequestSignatureSuccess
 }) => {
-  const [creationMode, setCreationMode] = useState<'template'|'upload'>('template');
+  const [showNewDocLanding, setShowNewDocLanding] = useState<boolean>(!initialDocId);
+  const [isImporting, setIsImporting] = useState<boolean>(false);
+  const [currentBuilderDocId, setCurrentBuilderDocId] = useState<string | undefined>(initialDocId);
+  const [lastSavedTime, setLastSavedTime] = useState<string | null>(null);
+  const [isDirty, setIsDirty] = useState<boolean>(false);
   
 
 
   // Load from initialDocId if provided
   useEffect(() => {
     if (initialDocId) {
+      setCurrentBuilderDocId(initialDocId);
       const doc = DatabaseService.getDocuments().find(d => d.id === initialDocId);
       if (doc && doc.variableValues) {
         setDocumentTitle(doc.title);
+        if (doc.companyId) setSelectedCompanyId(doc.companyId);
+        if (doc.templateVersionId && doc.templateVersionId !== 'uploaded') setSelectedTemplateId(doc.templateVersionId);
+        if (doc.updatedAt) {
+          setLastSavedTime(new Date(doc.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+        }
         try {
           if (doc.variableValues.pages) setPages(JSON.parse(doc.variableValues.pages));
           if (doc.variableValues.stamps) setStamps(JSON.parse(doc.variableValues.stamps));
           if (doc.variableValues.variables) setVariables(JSON.parse(doc.variableValues.variables));
+          // Restore branding config
+          if (doc.variableValues.showHeadpad !== undefined) setShowHeadpad(doc.variableValues.showHeadpad === 'true');
+          if (doc.variableValues.showFooter !== undefined) setShowFooter(doc.variableValues.showFooter === 'true');
+          if (doc.variableValues.fontFamily) setFontFamily(doc.variableValues.fontFamily);
+          if (doc.variableValues.fontSize) setFontSize(doc.variableValues.fontSize);
         } catch (e) {
           console.error("Error parsing document data", e);
         }
+        setShowNewDocLanding(false); // A doc is open — skip landing screen
+        setIsDirty(false);
       }
     }
   }, [initialDocId]);
+
+
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isDirty) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [isDirty]);
 
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>('alt_s');
   const selectedCompany = COMPANIES.find(c => c.id === selectedCompanyId) || COMPANIES[0];
@@ -120,11 +154,46 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
   // UI Status
   const [isExporting, setIsExporting] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'Home' | 'Insert' | 'Layout' | 'View'>('Home');
+
+  const [showFindReplace, setShowFindReplace] = useState(false);
+  const [findText, setFindText] = useState('');
+  const [replaceText, setReplaceText] = useState('');
+
+  const handleReplaceAll = () => {
+    if (!findText) return;
+    const regex = new RegExp(findText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+    let count = 0;
+    const newPages = pages.map(html => {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+      const walk = document.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT, null);
+      let n;
+      const nodesToReplace = [];
+      while ((n = walk.nextNode())) {
+        if (n.nodeValue && regex.test(n.nodeValue)) {
+          nodesToReplace.push(n);
+        }
+      }
+      nodesToReplace.forEach(node => {
+        const matches = node.nodeValue?.match(regex);
+        if (matches) count += matches.length;
+        if (node.nodeValue) node.nodeValue = node.nodeValue.replace(regex, replaceText);
+      });
+      return doc.body.innerHTML;
+    });
+    setPages(newPages);
+    setIsDirty(true);
+    setStatusMessage(`Replaced ${count} occurrences.`);
+    setTimeout(() => setStatusMessage(null), 3500);
+  };
+
 
   // DOM Refs for multi-page containers and editors
   const pageContainerRefs = useRef<(HTMLDivElement | null)[]>([]);
   const editorRefs = useRef<(HTMLDivElement | null)[]>([]);
   const fileUploadRef = useRef<HTMLInputElement>(null);
+  const docxUploadRef = useRef<HTMLInputElement>(null);
 
   // Dragging / Moving stamps
   const dragInfo = useRef<{ id: string; startX: number; startY: number; origX: number; origY: number } | null>(null);
@@ -206,6 +275,60 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
         el.innerHTML = pageHtml;
       }
     });
+  }, [pages]);
+
+
+  // ── Auto-Pagination Engine ──
+  useEffect(() => {
+    const checkOverflow = () => {
+      let needsReflow = false;
+      const newPages = [...pages];
+
+      // Scan all pages for overflow
+      for (let i = 0; i < pageContainerRefs.current.length; i++) {
+        const container = pageContainerRefs.current[i];
+        const editor = editorRefs.current[i];
+        
+        // A4 page height is approx 1123px. If container exceeds this, it's overflowing.
+        if (container && editor && container.clientHeight > 1130) {
+          // It's overflowing. Move the last child of the editor to the next page.
+          const children = Array.from(editor.children);
+          if (children.length > 1) {
+            // Check if user is actively typing in the last child
+            const selection = window.getSelection();
+            const activeNode = selection?.anchorNode;
+            const lastChild = children[children.length - 1];
+            
+            // If they are currently typing in the node we want to move, we delay until they stop
+            if (activeNode && lastChild.contains(activeNode)) {
+              continue; 
+            }
+
+            needsReflow = true;
+            const poppedHtml = lastChild.outerHTML;
+            
+            // Remove from current page
+            const remainingHtml = children.slice(0, children.length - 1).map(c => c.outerHTML).join('\n');
+            newPages[i] = remainingHtml;
+            
+            // Push to next page
+            if (i + 1 < newPages.length) {
+              newPages[i + 1] = poppedHtml + '\n' + newPages[i + 1];
+            } else {
+              newPages.push(poppedHtml);
+            }
+          }
+        }
+      }
+
+      if (needsReflow) {
+        setPages(newPages);
+      }
+    };
+
+    // Debounce the check slightly so it doesn't interrupt fast typing
+    const timer = setTimeout(checkOverflow, 1500);
+    return () => clearTimeout(timer);
   }, [pages]);
 
   // Sync editor innerHTML to pages state
@@ -549,6 +672,128 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
   };
 
   // ── Multi-Page Export to PDF ──
+  
+  // ── Universal Document Importer ──
+  // Accepts TXT, DOCX, PDF → extracts content → places into editor body with company branding intact
+  const handleDocxImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsImporting(true);
+    notifyUser(`Importing "${file.name}" into editor...`);
+
+    try {
+      let rawHtml = '';
+      const ext = file.name.toLowerCase().split('.').pop();
+
+      if (ext === 'txt') {
+        // TXT: read text, preserve paragraphs and line breaks
+        const text = await file.text();
+        rawHtml = text
+          .split(/\r?\n/)
+          .map(line => line.trim() === '' ? '<p class="mb-1"><br/></p>' : `<p class="mb-3 leading-relaxed">${line.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</p>`)
+          .join('');
+
+      } else if (ext === 'pdf') {
+        // PDF: extract text via pdfjs and insert as paragraphs
+        const pdfjs = await import('pdfjs-dist');
+        pdfjs.GlobalWorkerOptions.workerSrc =
+          'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/' + pdfjs.version + '/pdf.worker.min.mjs';
+        const buf = await file.arrayBuffer();
+        const pdf = await pdfjs.getDocument({ data: buf }).promise;
+        const pageTexts: string[] = [];
+        for (let i = 1; i <= pdf.numPages; i++) {
+          const page = await pdf.getPage(i);
+          const content = await page.getTextContent();
+          const pageText = content.items
+            .map((item: any) => item.str)
+            .join(' ')
+            .trim();
+          if (pageText) pageTexts.push(pageText);
+        }
+        rawHtml = pageTexts
+          .join('\n\n')
+          .split(/\n/)
+          .map(line => line.trim() === '' ? '<p class="mb-1"><br/></p>' : `<p class="mb-3 leading-relaxed">${line.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</p>`)
+          .join('');
+        if (!rawHtml) {
+          rawHtml = '<p class="text-slate-500 italic">PDF content extracted. Please review and edit as needed.</p>';
+        }
+
+      } else {
+        // DOCX/DOC: parse with mammoth, preserve headings/bold/italic/tables
+        const arrayBuffer = await file.arrayBuffer();
+        const result = await mammoth.convertToHtml({ arrayBuffer }, {
+          styleMap: [
+            "p[style-name='Heading 1'] => h1.text-xl.font-bold.mb-4.text-slate-900:fresh",
+            "p[style-name='Heading 2'] => h2.text-lg.font-bold.mb-3.text-slate-800:fresh",
+            "p[style-name='Heading 3'] => h3.text-md.font-bold.mb-2.text-slate-800:fresh",
+            "p => p.mb-3.leading-relaxed:fresh",
+            "table => table.border-collapse.w-full.border.border-slate-400.my-6.text-sm.align-middle:fresh",
+            "tr => tr.border-b.border-slate-300.hover:bg-slate-50:fresh",
+            "td => td.border.border-slate-300.px-4.py-3.text-slate-800:fresh",
+            "th => th.border.border-slate-400.px-4.py-3.font-bold.bg-slate-100.text-left.text-slate-900:fresh",
+            "b => strong.font-bold:fresh",
+            "i => em.italic:fresh",
+            "u => u:fresh",
+            "strike => s:fresh"
+          ]
+        });
+        rawHtml = result.value;
+      }
+      
+      if (rawHtml) {
+        // Smart A4 page splitting — content goes INTO editor body, company header/footer stays
+        const tempContainer = document.createElement('div');
+        tempContainer.style.width = '706px'; // A4 usable width (794 - 2*44 margin)
+        tempContainer.style.position = 'absolute';
+        tempContainer.style.visibility = 'hidden';
+        tempContainer.style.left = '-9999px';
+        tempContainer.style.padding = '0';
+        tempContainer.style.fontSize = fontSize;
+        tempContainer.style.fontFamily = fontFamily;
+        document.body.appendChild(tempContainer);
+
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(rawHtml, 'text/html');
+        const nodes = Array.from(doc.body.childNodes);
+        
+        const newPages: string[] = [];
+        const MAX_HEIGHT_PX = 900; // Usable body area (A4 minus header/footer)
+
+        for (const node of nodes) {
+          tempContainer.appendChild(node.cloneNode(true));
+          if (tempContainer.scrollHeight > MAX_HEIGHT_PX) {
+            tempContainer.lastChild?.remove();
+            newPages.push(tempContainer.innerHTML);
+            tempContainer.innerHTML = '';
+            tempContainer.appendChild(node.cloneNode(true));
+          }
+        }
+        if (tempContainer.innerHTML) {
+          newPages.push(tempContainer.innerHTML);
+        }
+        document.body.removeChild(tempContainer);
+
+        // Update document title from filename
+        const baseName = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
+        setDocumentTitle(baseName || documentTitle);
+
+        setPages(newPages.length > 0 ? newPages : ['']);
+        setActivePageIndex(0);
+        setShowNewDocLanding(false);
+        setIsDirty(true);
+        notifyUser(`✓ "${file.name}" imported into ${newPages.length} page(s) with ${selectedCompany.name} letterhead!`);
+      }
+    } catch (err) {
+      console.error('Error importing document:', err);
+      notifyUser('Failed to import document. Please ensure it is a valid .docx, .txt or .pdf file.');
+    } finally {
+      setIsImporting(false);
+      if (e.target) e.target.value = '';
+    }
+  };
+
   const handleExportPdf = async () => {
     setIsExporting(true);
     notifyUser('Generating multi-page high-resolution PDF...');
@@ -613,7 +858,12 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
           content: fullHtml,
           pages: JSON.stringify(pages),
           stamps: JSON.stringify(stamps),
-          variables: JSON.stringify(variables)
+          variables: JSON.stringify(variables),
+          // Persist branding config so it survives Save → Reopen
+          showHeadpad: String(showHeadpad),
+          showFooter: String(showFooter),
+          fontFamily,
+          fontSize
         },
         generatedAt: new Date().toISOString(),
         generatedBy: 'HR Admin',
@@ -626,36 +876,139 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
         }
       };
 
-      if (initialDocId) {
-        const existingDocs = DatabaseService.getDocuments();
-        const docIndex = existingDocs.findIndex(d => d.id === initialDocId);
-        if (docIndex >= 0) {
-            existingDocs[docIndex] = { ...existingDocs[docIndex], ...docData, status: 'draft' };
-            localStorage.setItem('smartdoc_documents_v1', JSON.stringify(existingDocs));
-        }
-      } else {
-        await DatabaseService.createDocument(docData as any);
-      }
-      
-      notifyUser(`Saved "${documentTitle}" (${pages.length} Pages) to Vault!`);
-      if (onSaveSuccess) onSaveSuccess();
+      const saved = await DatabaseService.saveDraft(docData as any, currentBuilderDocId || initialDocId);
+      setCurrentBuilderDocId(saved.id);
+      setIsDirty(false);
+      const t = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      setLastSavedTime(t);
+      notifyUser(`Draft "${documentTitle}" saved safely!`);
+      return saved.id;
     } catch (err) {
       console.error('Save error:', err);
       notifyUser('Document saved to local workspace cache.');
+      return null;
     }
   };
 
-  if (creationMode === 'upload') {
-    return <DocumentUploader onSwitch={() => setCreationMode('template')} onSaveSuccess={() => onSaveSuccess && onSaveSuccess()} />;
+  // ── New Document Landing Screen ──
+  // Shown when no document is open yet — lets HR choose template or upload
+  if (showNewDocLanding && !initialDocId) {
+    return (
+      <div className="h-full flex flex-col bg-gradient-to-br from-slate-50 via-white to-indigo-50/30 overflow-hidden">
+        {/* Top bar */}
+        <div className="h-14 bg-white border-b border-slate-200 px-6 flex items-center justify-between shrink-0 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="w-7 h-7 rounded-lg bg-brand-900 flex items-center justify-center">
+              <FileText className="w-4 h-4 text-white" />
+            </div>
+            <span className="font-bold text-slate-800 text-sm">New Document</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] text-slate-500">Select a company to apply branding:</span>
+            <select
+              value={selectedCompanyId}
+              onChange={(e) => setSelectedCompanyId(e.target.value)}
+              className="text-[11px] font-semibold text-slate-700 bg-white border border-slate-300 rounded px-2 py-1 outline-none hover:border-indigo-400 cursor-pointer"
+            >
+              {COMPANIES.map(c => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-auto flex flex-col items-center justify-center p-8 gap-8">
+          <div className="text-center">
+            <h1 className="text-2xl font-extrabold text-slate-800 mb-2">Create New Document</h1>
+            <p className="text-slate-500 text-sm max-w-md">
+              Start from a professional template or import your existing file.
+              Your selected company branding — <span className="font-semibold text-brand-900">{selectedCompany.name}</span> — will always be applied.
+            </p>
+          </div>
+
+          <div className="flex gap-6 flex-wrap justify-center max-w-3xl">
+            {/* Create from Template */}
+            <button
+              onClick={() => setShowNewDocLanding(false)}
+              className="flex flex-col items-center gap-4 bg-white border-2 border-slate-200 hover:border-brand-900 hover:shadow-lg rounded-2xl p-8 w-72 transition-all group cursor-pointer text-left"
+            >
+              <div className="w-16 h-16 rounded-2xl bg-indigo-50 group-hover:bg-brand-900/10 flex items-center justify-center transition-colors">
+                <LayoutTemplate className="w-8 h-8 text-brand-900" />
+              </div>
+              <div>
+                <p className="font-bold text-slate-800 text-base mb-1">Create from Template</p>
+                <p className="text-slate-500 text-sm">Choose from ready-made HR document templates like Offer Letter, Appointment, Asset Form, etc.</p>
+              </div>
+              <div className="mt-auto w-full flex items-center justify-center gap-1.5 bg-brand-900 text-white text-sm font-bold px-4 py-2 rounded-lg group-hover:bg-brand-800 transition-colors">
+                <Plus className="w-4 h-4" />
+                <span>Open Template Editor</span>
+              </div>
+            </button>
+
+            {/* Upload & Import */}
+            <label className="flex flex-col items-center gap-4 bg-white border-2 border-slate-200 hover:border-emerald-500 hover:shadow-lg rounded-2xl p-8 w-72 transition-all group cursor-pointer text-left">
+              <div className="w-16 h-16 rounded-2xl bg-emerald-50 group-hover:bg-emerald-100 flex items-center justify-center transition-colors">
+                <UploadCloud className="w-8 h-8 text-emerald-600" />
+              </div>
+              <div>
+                <p className="font-bold text-slate-800 text-base mb-1">Upload Existing Document</p>
+                <p className="text-slate-500 text-sm">Import a <strong>TXT</strong>, <strong>DOCX</strong>, or <strong>PDF</strong> file. Its content will be placed inside the editor with your company letterhead.</p>
+              </div>
+              <div className="mt-auto w-full flex items-center justify-center gap-1.5 bg-emerald-600 text-white text-sm font-bold px-4 py-2 rounded-lg group-hover:bg-emerald-700 transition-colors">
+                <UploadCloud className="w-4 h-4" />
+                <span>Upload &amp; Import Content</span>
+              </div>
+              <input
+                type="file"
+                className="hidden"
+                accept=".pdf,.doc,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
+                onChange={async (e) => {
+                  setShowNewDocLanding(false);
+                  await handleDocxImport(e);
+                }}
+              />
+            </label>
+          </div>
+
+          {/* Company branding preview */}
+          <div className="flex items-center gap-3 bg-white border border-slate-200 rounded-xl px-5 py-3 shadow-sm max-w-lg">
+            <img
+              src={selectedCompany.logoUrl}
+              alt={selectedCompany.name}
+              className="h-8 object-contain mix-blend-multiply"
+              onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+            />
+            <div className="flex flex-col">
+              <span className="text-xs font-bold text-slate-800">{selectedCompany.name}</span>
+              <span className="text-[10px] text-slate-500">{selectedCompany.email} • {selectedCompany.website}</span>
+            </div>
+            <div className="ml-auto text-[10px] text-slate-400">Branding will be applied automatically</div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="h-full flex flex-col bg-[#f1f3f6] overflow-hidden font-sans text-slate-900 select-none min-w-0">
+    <div className="h-full flex flex-col bg-[#f1f3f6] overflow-hidden font-sans text-brand-900 select-none min-w-0">
                                     {/* ── Top Bar: Actions ── */}
       <div className="bg-white border-b border-slate-200 px-3 py-2 flex flex-wrap items-center justify-between gap-2 shrink-0 shadow-sm z-20 w-full min-h-[44px]">
         <div className="flex items-center gap-1 min-w-0 shrink-0">
+          <div className="flex items-center space-x-1 border-r border-slate-200 pr-2 mr-1 shrink-0">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">COMPANY:</span>
+            <select
+              value={selectedCompanyId}
+              onChange={(e) => setSelectedCompanyId(e.target.value)}
+              className="text-[11px] font-semibold text-slate-700 bg-white border border-slate-300 rounded px-1.5 py-0.5 outline-none hover:border-indigo-400 cursor-pointer"
+            >
+              {COMPANIES.map(c => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </div>
           <div className="flex items-center space-x-1 shrink-0">
-            <LayoutTemplate className="w-3.5 h-3.5 text-indigo-600" />
+            <LayoutTemplate className="w-3.5 h-3.5 text-brand-900" />
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Template:</span>
           </div>
 
@@ -675,12 +1028,13 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
           <div className="w-px h-4 bg-slate-200 mx-0.5 hidden sm:block"></div>
           
           <button
-            onClick={() => setCreationMode('upload')}
-            className="flex items-center gap-1 px-1.5 py-0.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[11px] font-bold rounded border border-indigo-200 shrink-0"
-            title="Upload Document"
+            onClick={() => docxUploadRef.current?.click()}
+            disabled={isImporting}
+            className="flex items-center gap-1 px-1.5 py-0.5 bg-slate-50 hover:bg-slate-100 text-brand-900 text-[11px] font-bold rounded border border-slate-200 shrink-0 disabled:opacity-50"
+            title="Import TXT / DOCX / PDF into editor body (letterhead preserved)"
           >
             <UploadCloud size={12} />
-            <span>Upload</span>
+            <span>{isImporting ? 'Importing...' : 'Import'}</span>
           </button>
 
           <input
@@ -694,10 +1048,10 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
           <button
             onClick={() => setShowVarDrawer(!showVarDrawer)}
             className={`flex items-center space-x-1 text-[11px] font-semibold px-1.5 py-0.5 rounded border shrink-0 ${
-              showVarDrawer ? 'bg-indigo-50 border-indigo-300 text-indigo-700' : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'
+              showVarDrawer ? 'bg-slate-50 border-slate-300 text-brand-900' : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'
             }`}
           >
-            <Sparkles className="w-3 h-3 text-indigo-600" />
+            <Sparkles className="w-3 h-3 text-brand-900" />
             <span className="hidden lg:inline">Dynamic Fields ({variables.recipientName ? 'Active' : 'Fill'})</span>
             <span className="inline lg:hidden">Fields</span>
           </button>
@@ -705,40 +1059,50 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
 
         {/* Right Actions */}
         <div className="flex items-center gap-1 shrink-0">
-          <button
-            onClick={() => setDrawModalOpen(true)}
-            className="flex items-center space-x-1 text-[11px] font-semibold bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 px-1.5 py-0.5 rounded active:scale-95 transition-all shrink-0"
-            title="Draw Signature"
-          >
-            <PenTool className="w-3 h-3 text-indigo-600" />
-            <span>Sign</span>
-          </button>
+
+
+
+
+
+
+
+
+          {/* Draft Status Badge */}
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-300 flex items-center gap-1 shrink-0">
+            <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+            Draft
+          </span>
+          {lastSavedTime && (
+            <span className="text-[10px] text-slate-500 font-medium shrink-0 hidden md:inline">
+              Saved {lastSavedTime}
+            </span>
+          )}
 
           <button
-            onClick={addOfficialCorporateStamp}
-            className="flex items-center space-x-1 text-[11px] font-semibold bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 px-1.5 py-0.5 rounded active:scale-95 transition-all shrink-0"
-            title="Add Corporate Seal"
-          >
-            <StampIcon className="w-3 h-3 text-blue-700" />
-            <span>Seal</span>
-          </button>
-
-          <button
-            onClick={() => addNewPage(pages.length - 1)}
-            className="flex items-center space-x-1 text-[11px] font-semibold bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 px-1.5 py-0.5 rounded active:scale-95 transition-all shrink-0"
-            title="Add a new blank A4 page"
-          >
-            <Plus className="w-3 h-3 text-emerald-600" />
-            <span>Add Page</span>
-          </button>
-
-          <button
-            onClick={handleSaveToVault}
-            className="flex items-center space-x-1 text-[11px] font-semibold bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 px-1.5 py-0.5 rounded active:scale-95 transition-all shrink-0"
-            title="Save Document"
+            onClick={async () => {
+              await handleSaveToVault();
+              // Save Draft — does NOT create a signature request
+            }}
+            className="flex items-center space-x-1 text-[11px] font-bold bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 px-2 py-1 rounded-md shadow-xs active:scale-95 transition-all shrink-0"
+            title="Save Document as Draft"
           >
             <Save className="w-3 h-3 text-slate-600" />
-            <span>Save</span>
+            <span>Save Draft</span>
+          </button>
+
+          <button
+            onClick={async () => {
+              const docId = await handleSaveToVault();
+              if (docId) {
+                DatabaseService.createSignatureRequest(docId, 'siva_kumar', 'director@alt-s.com', 'HR Admin');
+                if (onRequestSignatureSuccess) onRequestSignatureSuccess(docId);
+              }
+            }}
+            className="flex items-center space-x-1 text-[11px] font-bold bg-brand-900 hover:bg-brand-800 text-white px-2.5 py-1 rounded-md shadow-xs active:scale-95 transition-all shrink-0 ml-0.5"
+            title="Save and Request Signature"
+          >
+            <Send className="w-3 h-3 text-white" />
+            <span>Request Signature</span>
           </button>
 
           <button
@@ -752,7 +1116,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
           <button
             onClick={handleExportPdf}
             disabled={isExporting}
-            className="flex items-center space-x-1 text-[11px] font-bold bg-[#0052cc] hover:bg-[#0047b3] text-white px-2 py-0.5 rounded shadow-sm active:scale-95 transition-all disabled:opacity-50 shrink-0 ml-1"
+            className="flex items-center space-x-1 text-[11px] font-bold bg-brand-900 hover:bg-brand-800 text-white px-2 py-0.5 rounded shadow-sm active:scale-95 transition-all disabled:opacity-50 shrink-0 ml-1"
             title="Export PDF"
           >
             <Download className="w-3 h-3" />
@@ -794,114 +1158,231 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
         </div>
       )}
 
-      {/* ── Word-Style Formatting Toolbar ── */}
-      <div className="bg-white border-b border-slate-200 px-3 py-2 flex flex-wrap items-center gap-3 text-slate-700 text-[11px] shadow-sm z-10 w-full min-h-[44px]">
+            {/* ── Word-Style Ribbon Toolbar ── */}
+      <div className="bg-white border-b border-slate-300 flex flex-col shadow-sm z-10 w-full select-none">
         
-        <div className="flex items-center gap-1 shrink-0">
-          {/* TEXT GROUP */}
-          <div className="flex items-center gap-0.5 border border-slate-200 rounded p-0.5 bg-slate-50/50 shrink-0">
-            <select value={fontFamily} onChange={(e) => handleFontFamilyChange(e.target.value)} className="border border-slate-300 rounded px-1 py-0.5 bg-white text-[11px] hover:border-slate-400 focus:outline-none focus:border-indigo-500 w-20 xl:w-24 truncate" title="Font Family">
-              <option value="'Calibri', Arial, sans-serif">Calibri</option>
-              <option value="'Arial', sans-serif">Arial</option>
-              <option value="'Inter', sans-serif">Inter</option>
-              <option value="'Times New Roman', serif">Times New Roman</option>
-              <option value="'Georgia', serif">Georgia</option>
-              <option value="'Courier New', monospace">Courier New</option>
-            </select>
-
-            <select value={fontSize} onChange={(e) => handleFontSizeChange(e.target.value)} className="border border-slate-300 rounded px-1 py-0.5 bg-white text-[11px] hover:border-slate-400 focus:outline-none focus:border-indigo-500 w-12 truncate ml-0.5" title="Font Size">
-              <option value="9pt">9pt</option>
-              <option value="10pt">10pt</option>
-              <option value="11pt">11pt</option>
-              <option value="12pt">12pt</option>
-              <option value="14pt">14pt</option>
-              <option value="16pt">16pt</option>
-              <option value="18pt">18pt</option>
-            </select>
-
-            <div className="flex items-center border border-slate-300 rounded ml-0.5 overflow-hidden">
-              <button onMouseDown={(e) => e.preventDefault()} onClick={() => { const cur = parseInt(fontSize) || 11; handleFontSizeChange(`${Math.max(8, cur - 1)}pt`); }} className="p-0.5 hover:bg-slate-200 bg-white" title="Decrease Font Size"><Minus className="w-2.5 h-2.5" /></button>
-              <div className="w-px h-3 bg-slate-300" />
-              <button onMouseDown={(e) => e.preventDefault()} onClick={() => { const cur = parseInt(fontSize) || 11; handleFontSizeChange(`${Math.max(36, cur + 1)}pt`); }} className="p-0.5 hover:bg-slate-200 bg-white" title="Increase Font Size"><Plus className="w-2.5 h-2.5" /></button>
-            </div>
-
-            <div className="w-px h-3 bg-slate-300 mx-0.5" />
-
-            <button onClick={() => execCmd('bold')} onMouseDown={(e) => e.preventDefault()} className="p-1 hover:bg-slate-200 rounded font-bold" title="Bold (Ctrl+B)"><Bold className="w-3 h-3" /></button>
-            <button onClick={() => execCmd('italic')} onMouseDown={(e) => e.preventDefault()} className="p-1 hover:bg-slate-200 rounded italic" title="Italic (Ctrl+I)"><Italic className="w-3 h-3" /></button>
-            <button onClick={() => execCmd('underline')} onMouseDown={(e) => e.preventDefault()} className="p-1 hover:bg-slate-200 rounded underline" title="Underline (Ctrl+U)"><Underline className="w-3 h-3" /></button>
-            <button onClick={() => execCmd('strikeThrough')} onMouseDown={(e) => e.preventDefault()} className="p-1 hover:bg-slate-200 rounded line-through" title="Strikethrough"><Strikethrough className="w-3 h-3" /></button>
-
-            <div className="w-px h-3 bg-slate-300 mx-0.5" />
-
-            <div className="flex items-center space-x-0.5 px-0.5" title="Text Color">
-              <Palette className="w-3 h-3 text-slate-500" />
-              <input type="color" value={textColor} onChange={(e) => handleTextColorChange(e.target.value)} className="w-3.5 h-3.5 cursor-pointer border-0 bg-transparent p-0" />
-            </div>
-            <div className="flex items-center space-x-0.5 px-0.5" title="Highlight Color">
-              <Highlighter className="w-3 h-3 text-amber-500" />
-              <input type="color" value={highlightColor} onChange={(e) => handleHighlightColorChange(e.target.value)} className="w-3.5 h-3.5 cursor-pointer border-0 bg-transparent p-0" />
-            </div>
-          </div>
-
-          {/* PARAGRAPH GROUP */}
-          <div className="flex items-center space-x-0.5 border border-slate-200 rounded p-0.5 bg-slate-50/50 shrink-0">
-            <button onClick={() => execCmd('justifyLeft')} onMouseDown={(e) => e.preventDefault()} className="p-1 hover:bg-slate-200 rounded" title="Align Left"><AlignLeft className="w-3 h-3" /></button>
-            <button onClick={() => execCmd('justifyCenter')} onMouseDown={(e) => e.preventDefault()} className="p-1 hover:bg-slate-200 rounded" title="Center"><AlignCenter className="w-3 h-3" /></button>
-            <button onClick={() => execCmd('justifyRight')} onMouseDown={(e) => e.preventDefault()} className="p-1 hover:bg-slate-200 rounded" title="Align Right"><AlignRight className="w-3 h-3" /></button>
-            <button onClick={() => execCmd('justifyFull')} onMouseDown={(e) => e.preventDefault()} className="p-1 hover:bg-slate-200 rounded" title="Justify"><AlignJustify className="w-3 h-3" /></button>
-          </div>
-
-          {/* LIST GROUP */}
-          <div className="flex items-center space-x-0.5 border border-slate-200 rounded p-0.5 bg-slate-50/50 shrink-0">
-            <button onClick={() => execCmd('insertUnorderedList')} onMouseDown={(e) => e.preventDefault()} className="p-1 hover:bg-slate-200 rounded" title="Bullet List"><List className="w-3 h-3" /></button>
-            <button onClick={() => execCmd('insertOrderedList')} onMouseDown={(e) => e.preventDefault()} className="p-1 hover:bg-slate-200 rounded" title="Numbered List"><ListOrdered className="w-3 h-3" /></button>
-            <button onClick={() => execCmd('indent')} onMouseDown={(e) => e.preventDefault()} className="p-1 hover:bg-slate-200 rounded" title="Increase Indent"><Indent className="w-3 h-3" /></button>
-            <button onClick={() => execCmd('outdent')} onMouseDown={(e) => e.preventDefault()} className="p-1 hover:bg-slate-200 rounded" title="Decrease Indent"><Outdent className="w-3 h-3" /></button>
-          </div>
-
-          {/* INSERT GROUP */}
-          <div className="flex items-center space-x-0.5 border border-slate-200 rounded p-0.5 bg-slate-50/50 shrink-0">
-            <button onClick={insertTable} onMouseDown={(e) => e.preventDefault()} className="flex items-center space-x-1 px-1 py-0.5 hover:bg-slate-200 rounded" title="Insert Table">
-              <Table className="w-3 h-3 text-blue-600" />
-              <span className="hidden lg:inline">Table</span>
+        {/* Ribbon Tabs */}
+        <div className="flex items-center px-4 space-x-6 text-[12px] text-slate-600 border-b border-slate-200">
+          {['Home', 'Insert', 'Layout', 'View'].map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab as any)}
+              className={`px-1 py-1.5 -mb-[1px] border-b-2 transition-colors ${activeTab === tab ? 'border-brand-900 text-brand-900 font-semibold' : 'border-transparent hover:border-slate-300'}`}
+            >
+              {tab}
             </button>
-            <button onClick={insertCurrentDate} onMouseDown={(e) => e.preventDefault()} className="flex items-center space-x-1 px-1 py-0.5 hover:bg-slate-200 rounded" title="Insert Current Date">
-              <Calendar className="w-3 h-3 text-emerald-600" />
-              <span className="hidden lg:inline">Date</span>
-            </button>
-            <button onClick={addDateStamp} onMouseDown={(e) => e.preventDefault()} className="flex items-center space-x-1 px-1 py-0.5 hover:bg-slate-200 rounded" title="Add Verified Date Stamp Overlay">
-              <Check className="w-3 h-3 text-indigo-600" />
-              <span className="hidden lg:inline">Stamp Date</span>
-            </button>
-            <button onClick={() => fileUploadRef.current?.click()} onMouseDown={(e) => e.preventDefault()} className="flex items-center space-x-1 px-1 py-0.5 hover:bg-slate-200 rounded" title="Upload Signature Image">
-              <FileText className="w-3 h-3 text-purple-600" />
-              <span className="hidden lg:inline">Upload Sign</span>
-            </button>
-            <input ref={fileUploadRef} type="file" accept="image/png, image/jpeg" onChange={handleSignatureUpload} className="hidden" />
-          </div>
+          ))}
         </div>
 
-        {/* LAYOUT GROUP */}
-        <div className="flex items-center space-x-2 border border-slate-200 rounded p-0.5 px-1.5 bg-slate-50/50 shrink-0 ml-auto">
-          <label className="flex items-center space-x-1 cursor-pointer">
-            <input type="checkbox" checked={headpadOnAllPages} onChange={(e) => _setHeadpadOnAllPages(e.target.checked)} className="rounded w-3 h-3 text-indigo-600 focus:ring-0 cursor-pointer" />
-            <span title="ALT-S Letterhead">Letterhead</span>
-          </label>
-          <label className="flex items-center space-x-1 cursor-pointer">
-            <input type="checkbox" checked={showFooter} onChange={(e) => setShowFooter(e.target.checked)} className="rounded w-3 h-3 text-indigo-600 focus:ring-0 cursor-pointer" />
-            <span title="Official Footer">Footer</span>
-          </label>
-          <div className="flex items-center space-x-0.5 bg-white px-1 py-0.5 rounded border border-slate-200">
-            <button onClick={() => setZoomLevel(prev => Math.max(60, prev - 10))} className="font-bold px-1 hover:bg-slate-100 rounded">-</button>
-            <span className="font-mono w-7 text-center">{zoomLevel}%</span>
-            <button onClick={() => setZoomLevel(prev => Math.min(130, prev + 10))} className="font-bold px-1 hover:bg-slate-100 rounded">+</button>
-          </div>
+        {/* Ribbon Content */}
+        <div className="px-3 py-2 flex items-center gap-4 text-[11px] text-slate-700 min-h-[50px] bg-slate-50/50">
+          
+          {activeTab === 'Home' && (
+            <>
+              
+              {/* UNDO/REDO GROUP */}
+              <div className="flex flex-col border-r border-slate-300 pr-4 h-full justify-center">
+                <div className="flex items-center space-x-1">
+                  <button onClick={() => execCmd('undo')} className="p-1 hover:bg-slate-200 rounded text-slate-700" title="Undo (Ctrl+Z)"><Undo className="w-4 h-4" /></button>
+                  <button onClick={() => execCmd('redo')} className="p-1 hover:bg-slate-200 rounded text-slate-700" title="Redo (Ctrl+Y)"><Redo className="w-4 h-4" /></button>
+                </div>
+                <div className="text-[9px] text-slate-400 mt-1 font-semibold text-center w-full">History</div>
+              </div>
+
+              {/* FONT GROUP */}
+              <div className="flex flex-col border-r border-slate-300 pr-4">
+                <div className="flex items-center space-x-1 mb-1">
+                  <select value={fontFamily} onChange={(e) => handleFontFamilyChange(e.target.value)} className="border border-slate-300 rounded px-1 py-0.5 bg-white hover:border-slate-400 focus:outline-none focus:border-indigo-500 w-24 truncate">
+                    <option value="'Calibri', Arial, sans-serif">Calibri</option>
+                    <option value="'Arial', sans-serif">Arial</option>
+                    <option value="'Inter', sans-serif">Inter</option>
+                    <option value="'Times New Roman', serif">Times New Roman</option>
+                    <option value="'Georgia', serif">Georgia</option>
+                    <option value="'Courier New', monospace">Courier New</option>
+                  </select>
+
+                  <select value={fontSize} onChange={(e) => handleFontSizeChange(e.target.value)} className="border border-slate-300 rounded px-1 py-0.5 bg-white hover:border-slate-400 focus:outline-none focus:border-indigo-500 w-12 truncate">
+                    <option value="9pt">9pt</option>
+                    <option value="10pt">10pt</option>
+                    <option value="11pt">11pt</option>
+                    <option value="12pt">12pt</option>
+                    <option value="14pt">14pt</option>
+                    <option value="16pt">16pt</option>
+                    <option value="18pt">18pt</option>
+                  </select>
+
+                  <div className="flex items-center border border-slate-300 rounded overflow-hidden">
+                    <button onMouseDown={(e) => e.preventDefault()} onClick={() => { const cur = parseInt(fontSize) || 11; handleFontSizeChange(`${Math.max(8, cur - 1)}pt`); }} className="p-0.5 hover:bg-slate-200 bg-white"><Minus className="w-2.5 h-2.5" /></button>
+                    <div className="w-px h-3 bg-slate-300" />
+                    <button onMouseDown={(e) => e.preventDefault()} onClick={() => { const cur = parseInt(fontSize) || 11; handleFontSizeChange(`${Math.max(36, cur + 1)}pt`); }} className="p-0.5 hover:bg-slate-200 bg-white"><Plus className="w-2.5 h-2.5" /></button>
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-1">
+                  <button onClick={() => execCmd('bold')} onMouseDown={(e) => e.preventDefault()} className="p-1 hover:bg-slate-200 rounded font-bold" title="Bold (Ctrl+B)"><Bold className="w-3.5 h-3.5" /></button>
+                  <button onClick={() => execCmd('italic')} onMouseDown={(e) => e.preventDefault()} className="p-1 hover:bg-slate-200 rounded italic" title="Italic (Ctrl+I)"><Italic className="w-3.5 h-3.5" /></button>
+                  <button onClick={() => execCmd('underline')} onMouseDown={(e) => e.preventDefault()} className="p-1 hover:bg-slate-200 rounded underline" title="Underline (Ctrl+U)"><Underline className="w-3.5 h-3.5" /></button>
+                  <button onClick={() => execCmd('strikeThrough')} onMouseDown={(e) => e.preventDefault()} className="p-1 hover:bg-slate-200 rounded line-through" title="Strikethrough"><Strikethrough className="w-3.5 h-3.5" /></button>
+                  
+                  <div className="w-px h-3 bg-slate-300 mx-1" />
+
+                  <div className="flex items-center space-x-0.5 px-0.5" title="Text Color">
+                    <Palette className="w-3.5 h-3.5 text-slate-500" />
+                    <input type="color" value={textColor} onChange={(e) => handleTextColorChange(e.target.value)} className="w-4 h-4 cursor-pointer border-0 bg-transparent p-0" />
+                  </div>
+                  <div className="flex items-center space-x-0.5 px-0.5" title="Highlight Color">
+                    <Highlighter className="w-3.5 h-3.5 text-amber-500" />
+                    <input type="color" value={highlightColor} onChange={(e) => handleHighlightColorChange(e.target.value)} className="w-4 h-4 cursor-pointer border-0 bg-transparent p-0" />
+                  </div>
+                </div>
+                <div className="text-[9px] text-slate-400 mt-0.5 font-semibold text-center w-full">Font</div>
+              </div>
+
+              {/* PARAGRAPH GROUP */}
+              <div className="flex flex-col border-r border-slate-300 pr-4">
+                <div className="flex items-center space-x-1 mb-1">
+                  <button onClick={() => execCmd('insertUnorderedList')} onMouseDown={(e) => e.preventDefault()} className="p-1 hover:bg-slate-200 rounded" title="Bullet List"><List className="w-3.5 h-3.5" /></button>
+                  <button onClick={() => execCmd('insertOrderedList')} onMouseDown={(e) => e.preventDefault()} className="p-1 hover:bg-slate-200 rounded" title="Numbered List"><ListOrdered className="w-3.5 h-3.5" /></button>
+                  <div className="w-px h-3 bg-slate-300 mx-1" />
+                  <button onClick={() => execCmd('outdent')} onMouseDown={(e) => e.preventDefault()} className="p-1 hover:bg-slate-200 rounded" title="Decrease Indent"><Outdent className="w-3.5 h-3.5" /></button>
+                  <button onClick={() => execCmd('indent')} onMouseDown={(e) => e.preventDefault()} className="p-1 hover:bg-slate-200 rounded" title="Increase Indent"><Indent className="w-3.5 h-3.5" /></button>
+                </div>
+                <div className="flex items-center space-x-1">
+                  <button onClick={() => execCmd('justifyLeft')} onMouseDown={(e) => e.preventDefault()} className="p-1 hover:bg-slate-200 rounded" title="Align Left"><AlignLeft className="w-3.5 h-3.5" /></button>
+                  <button onClick={() => execCmd('justifyCenter')} onMouseDown={(e) => e.preventDefault()} className="p-1 hover:bg-slate-200 rounded" title="Center"><AlignCenter className="w-3.5 h-3.5" /></button>
+                  <button onClick={() => execCmd('justifyRight')} onMouseDown={(e) => e.preventDefault()} className="p-1 hover:bg-slate-200 rounded" title="Align Right"><AlignRight className="w-3.5 h-3.5" /></button>
+                  <button onClick={() => execCmd('justifyFull')} onMouseDown={(e) => e.preventDefault()} className="p-1 hover:bg-slate-200 rounded" title="Justify"><AlignJustify className="w-3.5 h-3.5" /></button>
+                </div>
+                <div className="text-[9px] text-slate-400 mt-0.5 font-semibold text-center w-full">Paragraph</div>
+              </div>
+
+              {/* EDITING GROUP */}
+              <div className="flex flex-col border-r border-slate-300 pr-4 h-full justify-center pl-4">
+                <button onClick={() => setShowFindReplace(!showFindReplace)} className={`flex flex-col items-center p-1 rounded min-w-[48px] ${showFindReplace ? 'bg-indigo-100 text-indigo-700' : 'hover:bg-slate-200'}`} title="Find and Replace (Ctrl+F)">
+                  <Search className="w-5 h-5 mb-0.5" />
+                  <span>Find</span>
+                </button>
+                <div className="text-[9px] text-slate-400 mt-1 font-semibold text-center w-full">Editing</div>
+              </div>
+            </>
+          )}
+
+          {activeTab === 'Insert' && (
+            <>
+              {/* INSERT GROUP */}
+              <div className="flex flex-col border-r border-slate-300 pr-4 h-full justify-center">
+                <div className="flex items-center space-x-2">
+                  <button onClick={insertTable} onMouseDown={(e) => e.preventDefault()} className="flex flex-col items-center p-1 hover:bg-slate-200 rounded min-w-[48px]" title="Insert Table">
+                    <Table className="w-5 h-5 text-blue-600 mb-0.5" />
+                    <span>Table</span>
+                  </button>
+                  <div className="w-px h-6 bg-slate-300 mx-1" />
+                  <button onClick={() => docxUploadRef.current?.click()} onMouseDown={(e) => e.preventDefault()} className="flex flex-col items-center p-1 hover:bg-slate-200 rounded min-w-[48px]" title="Import Document">
+                    <FileUp className="w-5 h-5 text-brand-900 mb-0.5" />
+                    <span>Word</span>
+                  </button>
+                  <div className="w-px h-6 bg-slate-300 mx-1" />
+                  <button onClick={() => fileUploadRef.current?.click()} onMouseDown={(e) => e.preventDefault()} className="flex flex-col items-center p-1 hover:bg-slate-200 rounded min-w-[48px]" title="Upload Signature Image">
+                    <FileText className="w-5 h-5 text-purple-600 mb-0.5" />
+                    <span>Signature</span>
+                  </button>
+                  <button onClick={addDateStamp} onMouseDown={(e) => e.preventDefault()} className="flex flex-col items-center p-1 hover:bg-slate-200 rounded min-w-[48px]" title="Add Verified Date Stamp Overlay">
+                    <Check className="w-5 h-5 text-emerald-600 mb-0.5" />
+                    <span>Stamp</span>
+                  </button>
+                </div>
+                <div className="text-[9px] text-slate-400 mt-1 font-semibold text-center w-full">Elements</div>
+
+              </div>
+            </>
+          )}
+
+          {activeTab === 'Layout' && (
+            <>
+              {/* PAGE SETUP */}
+              <div className="flex flex-col border-r border-slate-300 pr-4 h-full justify-center">
+                <div className="flex items-center space-x-4 px-2">
+                  <label className="flex items-center space-x-1.5 cursor-pointer hover:bg-slate-200 p-1 rounded">
+                    <input type="checkbox" checked={headpadOnAllPages} onChange={(e) => _setHeadpadOnAllPages(e.target.checked)} className="rounded w-3.5 h-3.5 text-brand-900 focus:ring-0 cursor-pointer" />
+                    <span>{selectedCompany.name} Letterhead</span>
+                  </label>
+                  <label className="flex items-center space-x-1.5 cursor-pointer hover:bg-slate-200 p-1 rounded">
+                    <input type="checkbox" checked={showFooter} onChange={(e) => setShowFooter(e.target.checked)} className="rounded w-3.5 h-3.5 text-brand-900 focus:ring-0 cursor-pointer" />
+                    <span>Official Footer</span>
+                  </label>
+                </div>
+                <div className="text-[9px] text-slate-400 mt-1 font-semibold text-center w-full">Page Setup</div>
+              </div>
+            </>
+          )}
+
+          {activeTab === 'View' && (
+            <>
+              {/* ZOOM & WINDOW */}
+              <div className="flex flex-col border-r border-slate-300 pr-4 h-full justify-center">
+                <div className="flex items-center space-x-3 px-2">
+                  <div className="flex items-center space-x-1 bg-white px-1.5 py-0.5 rounded border border-slate-300">
+                    <button onClick={() => setZoomLevel(prev => Math.max(60, prev - 10))} className="font-bold px-1 hover:bg-slate-100 rounded text-lg leading-none">-</button>
+                    <span className="font-mono w-9 text-center text-xs">{zoomLevel}%</span>
+                    <button onClick={() => setZoomLevel(prev => Math.min(130, prev + 10))} className="font-bold px-1 hover:bg-slate-100 rounded text-lg leading-none">+</button>
+                  </div>
+                  <button onClick={() => setZoomLevel(100)} className="px-2 py-1 border border-slate-300 rounded hover:bg-slate-200 bg-white">100%</button>
+                </div>
+                <div className="text-[9px] text-slate-400 mt-1 font-semibold text-center w-full">Zoom</div>
+              </div>
+
+              {/* DANGEROUS ACTIONS */}
+              <div className="flex flex-col pr-4 h-full justify-center ml-auto">
+                <button onClick={() => {
+                  if (confirm('Are you sure you want to completely clear this document? All pages and content will be deleted.')) {
+                    setPages(['']);
+                    setStamps([]);
+                    setActivePageIndex(0);
+                    setIsDirty(true);
+                  }
+                }} onMouseDown={(e) => e.preventDefault()} className="flex items-center space-x-1.5 px-3 py-1.5 hover:bg-red-100 text-red-600 rounded border border-red-200 bg-red-50" title="Clear Entire Document">
+                  <Trash2 className="w-4 h-4 text-red-500" />
+                  <span className="font-bold">Clear Document</span>
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
+
+
+      {/* ── Find/Replace Floating Panel ── */}
+      {showFindReplace && (
+        <div className="absolute top-32 right-8 w-72 bg-white rounded-lg shadow-2xl border border-slate-300 z-40 flex flex-col overflow-hidden animate-in fade-in slide-in-from-top-4 duration-200">
+          <div className="bg-slate-100 border-b border-slate-300 px-3 py-2 flex items-center justify-between">
+            <span className="font-bold text-xs text-slate-700 flex items-center gap-1.5"><Search className="w-3.5 h-3.5"/> Find and Replace</span>
+            <button onClick={() => setShowFindReplace(false)} className="text-slate-500 hover:text-slate-800"><X className="w-4 h-4"/></button>
+          </div>
+          <div className="p-4 space-y-3 text-xs">
+            <div>
+              <label className="block text-slate-600 mb-1 font-semibold">Find</label>
+              <input type="text" value={findText} onChange={e => setFindText(e.target.value)} className="w-full border border-slate-300 rounded px-2 py-1.5 focus:border-indigo-500 outline-none" placeholder="Search document..." />
+            </div>
+            <div>
+              <label className="block text-slate-600 mb-1 font-semibold">Replace with</label>
+              <input type="text" value={replaceText} onChange={e => setReplaceText(e.target.value)} className="w-full border border-slate-300 rounded px-2 py-1.5 focus:border-indigo-500 outline-none" placeholder="Replace text..." />
+            </div>
+            <div className="pt-2 flex items-center justify-end gap-2">
+              <button onClick={() => (window as any).find(findText)} className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded font-semibold transition-colors">Find Next</button>
+              <button onClick={handleReplaceAll} className="px-3 py-1.5 bg-brand-900 hover:bg-brand-800 text-white rounded font-semibold transition-colors">Replace All</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+                {/* Document import — TXT, DOCX, PDF → imports content into editor body */}
+                <input type="file" ref={docxUploadRef} accept=".pdf,.doc,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain" onChange={handleDocxImport} className="hidden" />
+                {/* Signature image upload */}
+                <input ref={fileUploadRef} type="file" accept="image/png, image/jpeg" onChange={handleSignatureUpload} className="hidden" />
+
 {/* ── Status Toast ── */}
       {statusMessage && (
-        <div className="fixed bottom-6 right-6 bg-slate-900 text-white text-xs px-4 py-2.5 rounded-lg shadow-xl flex items-center space-x-2 z-50 animate-in fade-in slide-in-from-bottom-3 duration-200">
+        <div className="fixed bottom-6 right-6 bg-brand-900 text-white text-xs px-4 py-2.5 rounded-lg shadow-xl flex items-center space-x-2 z-50 animate-in fade-in slide-in-from-bottom-3 duration-200">
           <Check className="w-4 h-4 text-emerald-400" />
           <span>{statusMessage}</span>
         </div>
@@ -909,6 +1390,19 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
 
       {/* ── Main Multi-Page A4 Canvas Area ── */}
       <div className="flex-1 overflow-auto p-6 flex flex-col items-center gap-8 bg-[#e8ecf2] min-w-0">
+        
+        {/* ── Visual Horizontal Ruler ── */}
+        <div className="w-[794px] h-6 bg-white border border-slate-300 mb-4 sticky top-0 z-20 shadow-sm flex no-print">
+          {/* Left Margin (44px) */}
+          <div className="w-[44px] h-full bg-slate-200 border-r border-slate-400"></div>
+          {/* Usable Area (706px) with ticks */}
+          <div className="flex-1 h-full relative" style={{ backgroundImage: 'linear-gradient(90deg, transparent 95%, #cbd5e1 95%)', backgroundSize: '10px 100%' }}>
+            <div className="absolute inset-0" style={{ backgroundImage: 'linear-gradient(90deg, transparent 98%, #94a3b8 98%)', backgroundSize: '50px 100%' }}></div>
+          </div>
+          {/* Right Margin (44px) */}
+          <div className="w-[44px] h-full bg-slate-200 border-l border-slate-400"></div>
+        </div>
+
         {pages.map((pageContent, pageIdx) => {
           const isPageActive = activePageIndex === pageIdx;
           const pageStamps = stamps.filter(s => s.pageIndex === pageIdx);
@@ -927,7 +1421,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
                   <span className="font-bold bg-white text-slate-800 border border-slate-300 px-2.5 py-0.5 rounded shadow-sm">
                     📄 Page {pageIdx + 1} of {pages.length}
                   </span>
-                  {pageIdx === 0 && <span className="text-[11px] text-indigo-700 font-medium">Official ALT-S Letterhead</span>}
+                  {pageIdx === 0 && <span className="text-[11px] text-brand-900 font-medium">Official {selectedCompany.name} Letterhead</span>}
                 </div>
 
                 <div className="flex items-center space-x-1.5">
@@ -936,7 +1430,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
                     className="flex items-center space-x-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 px-2 py-0.5 rounded text-[11px] shadow-sm"
                     title="Move excess/bottom content to the next page"
                   >
-                    <ArrowDown className="w-3 h-3 text-indigo-600" />
+                    <ArrowDown className="w-3 h-3 text-brand-900" />
                     <span>Split Overflow</span>
                   </button>
 
@@ -999,8 +1493,8 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
                       <div className="mb-8 w-full flex items-end">
                         {/* Left: Company Logo */}
                         <img
-                          src="/altslogo.png"
-                          alt="ALT-S Logo"
+                          src={selectedCompany.logoUrl}
+                          alt={`${selectedCompany.name} Logo`}
                           className="max-h-[85px] max-w-[260px] object-contain shrink-0 object-left-bottom -mb-1 mix-blend-multiply"
                           onError={(e) => {
                             (e.target as HTMLElement).style.display = 'none';
@@ -1008,13 +1502,13 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
                         />
 
                         {/* Right: Gray Bar with Text Anchored on Top */}
-                        <div className="flex-1 h-[18px] bg-[#0a3161] rounded-l-lg ml-1 relative">
-                          <div className="absolute right-0 bottom-full text-[10.5px] leading-[1.4] text-slate-800 text-left font-sans border-l-2 border-[#0a3161] pl-3 pb-1 w-max pr-1">
-                            <p className="font-bold text-[11px] uppercase text-slate-900 border-b-[1.5px] border-[#0a3161] pb-[3px] mb-[3px] mt-0">
-                              ALT-S TECHNOLOGY PRIVATE LIMITED
+                        <div className="flex-1 h-[18px] rounded-l-lg ml-1 relative" style={{ backgroundColor: selectedCompany.themeColor }}>
+                          <div className="absolute right-0 bottom-full text-[10.5px] leading-[1.4] text-slate-800 text-left font-sans border-l-2 border-[color:var(--theme-color)] pl-3 pb-1 w-max pr-1">
+                            <p className="font-bold text-[11px] uppercase text-brand-900 border-b-[1.5px] border-[color:var(--theme-color)] pb-[3px] mb-[3px] mt-0">
+                              {selectedCompany.headerText.toUpperCase()}
                             </p>
                             <div className="whitespace-pre-line text-slate-800">
-                              {'No. 4, Mullai Street, Thiruvalluvar Nagar,\nKamarajnagar, Poonamallee, Tiruvallur,\nTamil Nadu - 600071, INDIA'}
+                              {selectedCompany.address}
                             </div>
                           </div>
                         </div>
@@ -1023,11 +1517,11 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
                       /* Subsequent Pages: Neat Header Band */
                       <div className="mb-4 pb-2 border-b border-slate-300 flex items-center justify-between text-[10px] text-slate-500">
                         <div className="flex items-center space-x-2">
-                          <img src="/altslogo.png" alt="ALT-S" className="h-[20px] object-contain" />
+                          <img src={selectedCompany.logoUrl} alt={selectedCompany.name} className="h-[20px] object-contain" />
                           <span className="font-semibold text-slate-700">{documentTitle}</span>
                         </div>
                         <div className="flex items-center space-x-4">
-                          <span>Ref: {variables.refNo || 'ALTS/DOC/2026'}</span>
+                          <span>Ref: {variables.refNo || `DOC/${new Date().getFullYear()}/01`}</span>
                           <span className="font-bold text-slate-800">Page {pageIdx + 1} of {pages.length}</span>
                         </div>
                       </div>
@@ -1041,7 +1535,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
                   contentEditable
                   suppressContentEditableWarning
                   onInput={() => handlePageInput(pageIdx)}
-                  style={{ fontSize: fontSize }}
+                  style={{ fontSize: fontSize, "--theme-color": selectedCompany.themeColor } as any}
                   className="flex-1 outline-none text-[#1e293b] leading-normal font-normal min-h-[700px] cursor-text"
                 />
 
@@ -1049,16 +1543,16 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
                 {showFooter && (
                   <div className="mt-6 pt-3 border-t border-slate-300 select-none">
                     <div className="flex items-center justify-between text-[9px] text-slate-600 pb-1">
-                      <p>Web: <span className="text-blue-700 font-semibold">www.alt-s.com</span> | Email: <span className="text-blue-700 font-semibold">hr@alt-s.com</span></p>
+                      <p>Web: <span className="text-blue-700 font-semibold">{selectedCompany.website}</span> | Email: <span className="text-blue-700 font-semibold">{selectedCompany.email}</span></p>
                       <p className="font-bold text-slate-800">Page {pageIdx + 1} of {pages.length}</p>
-                      <p>Corporate Office: Chennai, Tamil Nadu</p>
+                      <p>Phone: {selectedCompany.phone}</p>
                     </div>
 
                     {/* Official Corporate Identification & GSTIN Bar */}
-                    <div className="bg-[#1a2b49] text-white px-3 py-1 text-[8px] flex items-center justify-between rounded-sm mt-1">
-                      <span>CIN: <strong className="font-mono text-cyan-300">U72900TN2021PTC144887</strong></span>
-                      <span>ALT-S TECHNOLOGY PRIVATE LIMITED</span>
-                      <span>GSTIN: <strong className="font-mono text-cyan-300">33AAGCA5656P1ZB</strong></span>
+                    <div className="text-white px-3 py-1 text-[8px] flex items-center justify-between rounded-sm mt-1" style={{ backgroundColor: selectedCompany.themeColor }}>
+                      <span>CIN: <strong className="font-mono text-cyan-300">{selectedCompany.cin}</strong></span>
+                      <span>{selectedCompany.headerText.toUpperCase()}</span>
+                      <span>GSTIN: <strong className="font-mono text-cyan-300">{selectedCompany.gstin}</strong></span>
                     </div>
                   </div>
                 )}
@@ -1083,7 +1577,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
                       className={`group select-none ${isSelected ? 'ring-2 ring-indigo-500 ring-offset-2' : 'hover:ring-1 hover:ring-indigo-300'}`}
                     >
                       {stamp.type === 'date' ? (
-                        <div className="w-full h-full border-2 border-dashed border-indigo-800 bg-indigo-50/90 text-indigo-950 flex flex-col items-center justify-center p-2 rounded shadow text-center text-[10px] font-bold">
+                        <div className="w-full h-full border-2 border-dashed border-indigo-800 bg-slate-50/90 text-indigo-950 flex flex-col items-center justify-center p-2 rounded shadow text-center text-[10px] font-bold">
                           {stamp.text?.split('\n').map((line, idx) => (
                             <div key={idx}>{line}</div>
                           ))}
@@ -1098,7 +1592,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
 
                       {/* Controls on hover / select */}
                       {isSelected && (
-                        <div className="absolute -top-7 right-0 flex items-center space-x-1 bg-slate-900 text-white rounded px-1.5 py-0.5 text-[10px] shadow z-30 no-print">
+                        <div className="absolute -top-7 right-0 flex items-center space-x-1 bg-brand-900 text-white rounded px-1.5 py-0.5 text-[10px] shadow z-30 no-print">
                           <button
                             onClick={(e) => { e.stopPropagation(); updateSelectedStamp('rotation', (stamp.rotation - 15) % 360); }}
                             className="hover:text-cyan-300 p-0.5"
@@ -1132,9 +1626,11 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
 
         {/* ── Bottom Page Adder ── */}
         <div className="py-6 flex flex-col items-center gap-3">
+
+
           <button
             onClick={() => addNewPage(pages.length - 1)}
-            className="flex items-center space-x-2 bg-white hover:bg-slate-50 text-indigo-700 font-bold px-5 py-2.5 rounded-lg border-2 border-dashed border-indigo-300 shadow-sm hover:shadow active:scale-95 transition-all text-xs"
+            className="flex items-center space-x-2 bg-white hover:bg-slate-50 text-brand-900 font-bold px-5 py-2.5 rounded-lg border-2 border-dashed border-slate-300 shadow-sm hover:shadow active:scale-95 transition-all text-xs"
           >
             <Plus className="w-4 h-4" />
             <span>+ Add Next A4 Page</span>
@@ -1145,7 +1641,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
 
       {/* ── Handwritten Signature Drawing Modal ── */}
       {drawModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-brand-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full overflow-hidden animate-in zoom-in-95 duration-150">
             <div className="bg-[#1a2b49] text-white px-5 py-3.5 flex items-center justify-between">
               <div className="flex items-center space-x-2">
@@ -1199,7 +1695,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
                   </button>
                   <button
                     onClick={saveDrawnSignature}
-                    className="px-4 py-1.5 text-xs font-bold bg-[#0052cc] hover:bg-[#0047b3] text-white rounded shadow"
+                    className="px-4 py-1.5 text-xs font-bold bg-brand-900 hover:bg-brand-800 text-white rounded shadow"
                   >
                     Apply to Page {activePageIndex + 1}
                   </button>
