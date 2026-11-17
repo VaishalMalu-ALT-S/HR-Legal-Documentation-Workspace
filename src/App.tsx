@@ -15,7 +15,7 @@ import { DatabaseService } from './services/dbService';
 
 export function App() {
   const [currentTab, setCurrentTab] = useState('signature');
-  const [selectedTemplate, setSelectedTemplate] = useState('offer_letter');
+  const [selectedTemplate, setSelectedTemplate] = useState('asset_acknowledgment');
   const [collapsed, setCollapsed] = useState(false);
   const [currentRole, setCurrentRole] = useState<UserRole>(() => (localStorage.getItem('signhr_auth_role') as UserRole) || 'hr');
   const [isAuthenticated, setIsAuthenticated] = useState(() => localStorage.getItem('signhr_auth_status') === 'true');
@@ -77,7 +77,7 @@ export function App() {
         onNavigate={handleNavigate}
         activeTab={currentTab}
         onOpenCreate={() => {
-          setSelectedTemplate('offer_letter');
+          setSelectedTemplate('asset_acknowledgment');
           setSignatureDocId(undefined);
           setBuilderKey(k => k + 1); // Force remount → clean landing screen
           setCurrentTab('builder');

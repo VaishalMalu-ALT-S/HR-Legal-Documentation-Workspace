@@ -73,13 +73,9 @@ export const ApprovalWorkflow: React.FC<SignatureRequestsProps> = ({
   // ── HR: Verify OTP entered
   const handleHrOtpSuccess = (otp: string) => {
     if (!hrOtpReqId) return;
-    try {
-      DatabaseService.hrVerifySignatureOtp(hrOtpReqId, otp);
-      setHrOtpReqId(null);
-      reload();
-    } catch (e: any) {
-      alert(e.message);
-    }
+    DatabaseService.hrVerifySignatureOtp(hrOtpReqId, otp);
+    setHrOtpReqId(null);
+    reload();
   };
 
   return (
@@ -119,9 +115,19 @@ export const ApprovalWorkflow: React.FC<SignatureRequestsProps> = ({
               {groupedDocs.map(docGroup => {
                 const allAuth = docGroup.reqs.every(r => r.authorizedAt);
                 const someReady = docGroup.reqs.some(r => r.status === 'approved' && !r.authorizedAt);
-                const badge = allAuth ? <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-brand-900">✓ Fully Authorized</span> :
-                              someReady ? <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">⏳ OTP Ready</span> :
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white text-slate-600 border border-slate-200">Pending</span>;
+                const badge = allAuth ? (
+                  <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 inline-flex items-center gap-1">
+                    <CheckCircle2 size={11} /> Fully Authorized
+                  </span>
+                ) : someReady ? (
+                  <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-slate-100 text-slate-700 border border-slate-200 inline-flex items-center gap-1">
+                    <Clock size={11} /> OTP Ready
+                  </span>
+                ) : (
+                  <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-white text-slate-600 border border-slate-200">
+                    Pending
+                  </span>
+                );
 
                 return (
                   <button

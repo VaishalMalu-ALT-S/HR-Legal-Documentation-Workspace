@@ -5,7 +5,7 @@ import {
   AlignRight, AlignJustify, List, ListOrdered, Indent, Outdent,
   Palette, Highlighter, Table, Calendar, RotateCcw,
   RotateCw, Download, Printer, Save, FileText, UploadCloud, Check, Plus, FileUp,
-  Minus, Sparkles, Trash2, X, Stamp as StampIcon, PenTool,
+  Minus, SlidersHorizontal, Trash2, X, Stamp as StampIcon, PenTool,
   LayoutTemplate, ArrowDown, ArrowUp
 , Search, Undo, Redo} from 'lucide-react';
 import * as mammoth from 'mammoth';
@@ -140,6 +140,21 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
   const drawCanvasRef = useRef<HTMLCanvasElement>(null);
   const lastDrawPos = useRef<{ x: number; y: number } | null>(null);
 
+  // Request Signature Modal State
+  const [showRequestSigModal, setShowRequestSigModal] = useState(false);
+  const [selectedSigners, setSelectedSigners] = useState<{
+    siva: boolean;
+    uma: boolean;
+    sivaEmail: string;
+    umaEmail: string;
+  }>({
+    siva: true,
+    uma: false,
+    sivaEmail: 'siva@alt-s.com',
+    umaEmail: 'uma@alt-s.com'
+  });
+  const [isSendingSigRequest, setIsSendingSigRequest] = useState(false);
+
   // Dynamic Variables Quick-Fill Drawer
   const [showVarDrawer, setShowVarDrawer] = useState(false);
   const [variables, setVariables] = useState<DynamicVariables>({
@@ -198,25 +213,15 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
   // Dragging / Moving stamps
   const dragInfo = useRef<{ id: string; startX: number; startY: number; origX: number; origY: number } | null>(null);
 
-  // Sync initialTemplateId prop changes (e.g. from Sidebar clicks)
-  const [prevInitTplId, setPrevInitTplId] = useState(initialTemplateId);
-  const [prevSelTplId, setPrevSelTplId] = useState<string | null>(null);
-
-  if (initialTemplateId !== prevInitTplId) {
-    setPrevInitTplId(initialTemplateId);
-    if (initialTemplateId) {
-      setSelectedTemplateId(initialTemplateId);
-    }
-  }
-
-  // Load template content when selectedTemplateId changes
-  if (selectedTemplateId !== prevSelTplId) {
-    setPrevSelTplId(selectedTemplateId);
-    const tpl = COMPANY_TEMPLATES.find(t => t.id === selectedTemplateId) ?? COMPANY_TEMPLATES[0];
+  // Template selection handler — only updates pages when user explicitly selects a template or on new doc mount without initialDocId
+  const handleSelectTemplate = useCallback((tplId: string) => {
+    setSelectedTemplateId(tplId);
+    const tpl = COMPANY_TEMPLATES.find(t => t.id === tplId) ?? COMPANY_TEMPLATES[0];
     const initialPages = tpl.pages && tpl.pages.length > 0 ? [...tpl.pages] : [tpl.content];
     setDocumentTitle(tpl.name);
     setPages(initialPages);
     setActivePageIndex(0);
+    setIsDirty(true);
 
     // Auto-detect pre-filled variables based on template
     if (tpl.id === 'asset_acknowledgment') {
@@ -265,7 +270,16 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
         traineeId: 'TR001'
       });
     }
-  }
+  }, []);
+
+  const initialMountDone = useRef(false);
+  useEffect(() => {
+    if (initialMountDone.current) return;
+    initialMountDone.current = true;
+    if (!initialDocId) {
+      handleSelectTemplate(initialTemplateId || 'asset_acknowledgment');
+    }
+  }, [initialDocId, initialTemplateId, handleSelectTemplate]);
 
   // Sync editor content into DOM when pages change
   useEffect(() => {
@@ -783,7 +797,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
         setActivePageIndex(0);
         setShowNewDocLanding(false);
         setIsDirty(true);
-        notifyUser(`✓ "${file.name}" imported into ${newPages.length} page(s) with ${selectedCompany.name} letterhead!`);
+        notifyUser(`"${file.name}" imported into ${newPages.length} page(s) with ${selectedCompany.name} letterhead.`);
       }
     } catch (err) {
       console.error('Error importing document:', err);
@@ -930,33 +944,36 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
           <div className="flex gap-6 flex-wrap justify-center max-w-3xl">
             {/* Create from Template */}
             <button
-              onClick={() => setShowNewDocLanding(false)}
-              className="flex flex-col items-center gap-4 bg-white border-2 border-slate-200 hover:border-brand-900 hover:shadow-lg rounded-2xl p-8 w-72 transition-all group cursor-pointer text-left"
+              onClick={() => {
+                handleSelectTemplate(selectedTemplateId || 'asset_acknowledgment');
+                setShowNewDocLanding(false);
+              }}
+              className="flex flex-col items-center gap-4 bg-white border border-slate-200 hover:border-brand-900 hover:shadow-md rounded-lg p-6 w-72 transition-all group cursor-pointer text-left"
             >
-              <div className="w-16 h-16 rounded-2xl bg-indigo-50 group-hover:bg-brand-900/10 flex items-center justify-center transition-colors">
-                <LayoutTemplate className="w-8 h-8 text-brand-900" />
+              <div className="w-12 h-12 rounded-lg bg-slate-100 group-hover:bg-brand-900/10 flex items-center justify-center transition-colors">
+                <LayoutTemplate className="w-6 h-6 text-brand-900" />
               </div>
               <div>
-                <p className="font-bold text-slate-800 text-base mb-1">Create from Template</p>
-                <p className="text-slate-500 text-sm">Choose from ready-made HR document templates like Offer Letter, Appointment, Asset Form, etc.</p>
+                <p className="font-bold text-slate-800 text-sm mb-1">Create from Template</p>
+                <p className="text-slate-500 text-xs leading-relaxed">Choose from verified enterprise document templates like Offer Letter, Appointment, Asset Form, etc.</p>
               </div>
-              <div className="mt-auto w-full flex items-center justify-center gap-1.5 bg-brand-900 text-white text-sm font-bold px-4 py-2 rounded-lg group-hover:bg-brand-800 transition-colors">
-                <Plus className="w-4 h-4" />
+              <div className="mt-auto w-full flex items-center justify-center gap-1.5 bg-brand-900 text-white text-xs font-semibold px-4 py-2 rounded-md group-hover:bg-brand-800 transition-colors">
+                <Plus className="w-3.5 h-3.5" />
                 <span>Open Template Editor</span>
               </div>
             </button>
 
             {/* Upload & Import */}
-            <label className="flex flex-col items-center gap-4 bg-white border-2 border-slate-200 hover:border-emerald-500 hover:shadow-lg rounded-2xl p-8 w-72 transition-all group cursor-pointer text-left">
-              <div className="w-16 h-16 rounded-2xl bg-emerald-50 group-hover:bg-emerald-100 flex items-center justify-center transition-colors">
-                <UploadCloud className="w-8 h-8 text-emerald-600" />
+            <label className="flex flex-col items-center gap-4 bg-white border border-slate-200 hover:border-slate-400 hover:shadow-md rounded-lg p-6 w-72 transition-all group cursor-pointer text-left">
+              <div className="w-12 h-12 rounded-lg bg-slate-100 group-hover:bg-slate-200 flex items-center justify-center transition-colors">
+                <UploadCloud className="w-6 h-6 text-slate-700" />
               </div>
               <div>
-                <p className="font-bold text-slate-800 text-base mb-1">Upload Existing Document</p>
-                <p className="text-slate-500 text-sm">Import a <strong>TXT</strong>, <strong>DOCX</strong>, or <strong>PDF</strong> file. Its content will be placed inside the editor with your company letterhead.</p>
+                <p className="font-bold text-slate-800 text-sm mb-1">Upload Existing Document</p>
+                <p className="text-slate-500 text-xs leading-relaxed">Import a <strong>TXT</strong>, <strong>DOCX</strong>, or <strong>PDF</strong> file. Content is rendered into the editor with corporate letterhead.</p>
               </div>
-              <div className="mt-auto w-full flex items-center justify-center gap-1.5 bg-emerald-600 text-white text-sm font-bold px-4 py-2 rounded-lg group-hover:bg-emerald-700 transition-colors">
-                <UploadCloud className="w-4 h-4" />
+              <div className="mt-auto w-full flex items-center justify-center gap-1.5 bg-slate-800 text-white text-xs font-semibold px-4 py-2 rounded-md group-hover:bg-slate-700 transition-colors">
+                <UploadCloud className="w-3.5 h-3.5" />
                 <span>Upload &amp; Import Content</span>
               </div>
               <input
@@ -1014,7 +1031,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
 
           <select
             value={selectedTemplateId}
-            onChange={(e) => setSelectedTemplateId(e.target.value)}
+            onChange={(e) => handleSelectTemplate(e.target.value)}
             className="text-[11px] font-semibold bg-slate-100 hover:bg-slate-200/70 text-slate-800 rounded px-1.5 py-0.5 border border-slate-300 outline-none cursor-pointer w-24 md:w-32 lg:w-40 xl:w-48 shrink-0 truncate"
             title="Template Selector"
           >
@@ -1051,7 +1068,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
               showVarDrawer ? 'bg-slate-50 border-slate-300 text-brand-900' : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'
             }`}
           >
-            <Sparkles className="w-3 h-3 text-brand-900" />
+            <SlidersHorizontal className="w-3 h-3 text-brand-900" />
             <span className="hidden lg:inline">Dynamic Fields ({variables.recipientName ? 'Active' : 'Fill'})</span>
             <span className="inline lg:hidden">Fields</span>
           </button>
@@ -1059,14 +1076,6 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
 
         {/* Right Actions */}
         <div className="flex items-center gap-1 shrink-0">
-
-
-
-
-
-
-
-
           {/* Draft Status Badge */}
           <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-300 flex items-center gap-1 shrink-0">
             <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
@@ -1081,7 +1090,6 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
           <button
             onClick={async () => {
               await handleSaveToVault();
-              // Save Draft — does NOT create a signature request
             }}
             className="flex items-center space-x-1 text-[11px] font-bold bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 px-2 py-1 rounded-md shadow-xs active:scale-95 transition-all shrink-0"
             title="Save Document as Draft"
@@ -1091,15 +1099,9 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
           </button>
 
           <button
-            onClick={async () => {
-              const docId = await handleSaveToVault();
-              if (docId) {
-                DatabaseService.createSignatureRequest(docId, 'siva_kumar', 'director@alt-s.com', 'HR Admin');
-                if (onRequestSignatureSuccess) onRequestSignatureSuccess(docId);
-              }
-            }}
+            onClick={() => setShowRequestSigModal(true)}
             className="flex items-center space-x-1 text-[11px] font-bold bg-brand-900 hover:bg-brand-800 text-white px-2.5 py-1 rounded-md shadow-xs active:scale-95 transition-all shrink-0 ml-0.5"
-            title="Save and Request Signature"
+            title="Request Signatures from Managing Director or Director"
           >
             <Send className="w-3 h-3 text-white" />
             <span>Request Signature</span>
@@ -1418,8 +1420,9 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
               {/* Page Control Bar */}
               <div className="w-[794px] mb-2 flex items-center justify-between text-xs text-slate-500 px-2 no-print">
                 <div className="flex items-center space-x-2">
-                  <span className="font-bold bg-white text-slate-800 border border-slate-300 px-2.5 py-0.5 rounded shadow-sm">
-                    📄 Page {pageIdx + 1} of {pages.length}
+                  <span className="font-bold bg-white text-slate-800 border border-slate-300 px-2.5 py-0.5 rounded shadow-sm inline-flex items-center gap-1.5">
+                    <FileText className="w-3.5 h-3.5 text-slate-500" />
+                    <span>Page {pageIdx + 1} of {pages.length}</span>
                   </span>
                   {pageIdx === 0 && <span className="text-[11px] text-brand-900 font-medium">Official {selectedCompany.name} Letterhead</span>}
                 </div>
@@ -1701,6 +1704,145 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
                   </button>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ── Request Signatures Modal ── */}
+      {showRequestSigModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg border border-slate-200 shadow-xl max-w-md w-full p-6 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center space-x-2">
+                <Send className="w-5 h-5 text-brand-900" />
+                <h3 className="text-base font-bold text-slate-900">Request Signatures</h3>
+              </div>
+              <button
+                onClick={() => setShowRequestSigModal(false)}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-md transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-500 mt-3 mb-4">
+              Select one or both authorized signatories to approve and sign <strong className="text-slate-700">"{documentTitle}"</strong>.
+            </p>
+
+            <div className="space-y-4">
+              {/* Signer 1: Siva Kumar */}
+              <div className={`p-3 rounded-lg border transition-all ${selectedSigners.siva ? 'border-brand-900/40 bg-slate-50' : 'border-slate-200 bg-white'}`}>
+                <label className="flex items-center justify-between cursor-pointer">
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      checked={selectedSigners.siva}
+                      onChange={(e) => setSelectedSigners(prev => ({ ...prev, siva: e.target.checked }))}
+                      className="rounded border-slate-300 text-brand-900 focus:ring-brand-900"
+                    />
+                    <div>
+                      <p className="text-xs font-semibold text-slate-800">Siva Kumar</p>
+                      <p className="text-[11px] text-slate-500">Managing Director</p>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-medium bg-slate-100 text-slate-600 px-2 py-0.5 rounded">Managing Director</span>
+                </label>
+                {selectedSigners.siva && (
+                  <div className="mt-2.5 pt-2 border-t border-slate-200">
+                    <label className="text-[10px] font-semibold text-slate-500 block mb-1">Signer Email Address</label>
+                    <input
+                      type="email"
+                      value={selectedSigners.sivaEmail}
+                      onChange={(e) => setSelectedSigners(prev => ({ ...prev, sivaEmail: e.target.value }))}
+                      className="w-full text-xs px-2.5 py-1.5 rounded border border-slate-300 bg-white focus:outline-none focus:border-brand-900"
+                      placeholder="siva@alt-s.com"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Signer 2: Uma Mageshwari */}
+              <div className={`p-3 rounded-lg border transition-all ${selectedSigners.uma ? 'border-brand-900/40 bg-slate-50' : 'border-slate-200 bg-white'}`}>
+                <label className="flex items-center justify-between cursor-pointer">
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      checked={selectedSigners.uma}
+                      onChange={(e) => setSelectedSigners(prev => ({ ...prev, uma: e.target.checked }))}
+                      className="rounded border-slate-300 text-brand-900 focus:ring-brand-900"
+                    />
+                    <div>
+                      <p className="text-xs font-semibold text-slate-800">Uma Mageshwari</p>
+                      <p className="text-[11px] text-slate-500">Director</p>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-medium bg-slate-100 text-slate-600 px-2 py-0.5 rounded">Director</span>
+                </label>
+                {selectedSigners.uma && (
+                  <div className="mt-2.5 pt-2 border-t border-slate-200">
+                    <label className="text-[10px] font-semibold text-slate-500 block mb-1">Signer Email Address</label>
+                    <input
+                      type="email"
+                      value={selectedSigners.umaEmail}
+                      onChange={(e) => setSelectedSigners(prev => ({ ...prev, umaEmail: e.target.value }))}
+                      className="w-full text-xs px-2.5 py-1.5 rounded border border-slate-300 bg-white focus:outline-none focus:border-brand-900"
+                      placeholder="uma@alt-s.com"
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="mt-6 flex items-center justify-end space-x-2">
+              <button
+                type="button"
+                onClick={() => setShowRequestSigModal(false)}
+                className="text-xs font-semibold px-3 py-1.5 rounded border border-slate-300 text-slate-600 hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isSendingSigRequest || (!selectedSigners.siva && !selectedSigners.uma)}
+                onClick={async () => {
+                  try {
+                    setIsSendingSigRequest(true);
+                    const docId = await handleSaveToVault();
+                    if (!docId) {
+                      notifyUser('Please ensure document is saved first.');
+                      return;
+                    }
+                    if (selectedSigners.siva) {
+                      DatabaseService.createSignatureRequest(
+                        docId,
+                        'siva_kumar',
+                        selectedSigners.sivaEmail || 'siva@alt-s.com',
+                        'HR Admin'
+                      );
+                    }
+                    if (selectedSigners.uma) {
+                      DatabaseService.createSignatureRequest(
+                        docId,
+                        'uma_mageshwari',
+                        selectedSigners.umaEmail || 'uma@alt-s.com',
+                        'HR Admin'
+                      );
+                    }
+                    const names = [selectedSigners.siva ? 'Siva Kumar' : '', selectedSigners.uma ? 'Uma Mageshwari' : ''].filter(Boolean).join(' and ');
+                    notifyUser(`Signature request sent to ${names}.`);
+                    setShowRequestSigModal(false);
+                    if (onRequestSignatureSuccess) onRequestSignatureSuccess(docId);
+                  } catch (err: any) {
+                    notifyUser(err.message || 'Error sending signature request');
+                  } finally {
+                    setIsSendingSigRequest(false);
+                  }
+                }}
+                className="text-xs font-bold px-4 py-1.5 rounded bg-brand-900 hover:bg-brand-800 text-white disabled:opacity-50 flex items-center space-x-1.5 shadow-sm"
+              >
+                <Send className="w-3 h-3" />
+                <span>{isSendingSigRequest ? 'Sending...' : 'Send Request'}</span>
+              </button>
             </div>
           </div>
         </div>

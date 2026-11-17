@@ -184,6 +184,7 @@ export interface SmartDocument {
   generatedAt: string;
   generatedBy: string;
   signedAt?: string;
+  completedAt?: string;
   signatures: DocumentSignature[];
   approvalWorkflow: DocumentApprovalWorkflow;
     authorizations?: DocumentAuthorization[];

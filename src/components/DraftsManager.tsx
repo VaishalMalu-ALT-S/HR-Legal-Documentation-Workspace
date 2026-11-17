@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { 
   FileEdit, Search, ArrowRight, Trash2, Plus, 
   Building2, User, Clock, FileText, UploadCloud,
-  Layers, CheckCircle, AlertCircle, Sparkles
+  Layers, CheckCircle, AlertCircle
 } from 'lucide-react';
 import { SmartDocument } from '../types';
 import { DatabaseService } from '../services/dbService';
@@ -70,10 +70,10 @@ export const DraftsManager: React.FC<DraftsManagerProps> = ({
   return (
     <div className="space-y-6 animate-fade-in pb-16">
       {/* Header section */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-lg border border-slate-200 shadow-xs">
         <div>
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-700 shadow-xs">
+            <div className="w-9 h-9 rounded-md bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-700 shadow-xs">
               <FileEdit size={20} />
             </div>
             <div>
@@ -87,7 +87,7 @@ export const DraftsManager: React.FC<DraftsManagerProps> = ({
 
         <button
           onClick={onOpenCreate}
-          className="flex items-center gap-2 px-4 py-2 bg-[#0052cc] hover:bg-[#0065ff] active:bg-[#0747a6] text-white text-xs font-bold rounded-xl shadow-xs transition-colors shrink-0"
+          className="flex items-center gap-2 px-4 py-2 bg-brand-900 hover:bg-brand-800 active:bg-brand-950 text-white text-xs font-bold rounded-md shadow-xs transition-colors shrink-0"
         >
           <Plus size={15} />
           <span>New Document</span>
@@ -96,7 +96,7 @@ export const DraftsManager: React.FC<DraftsManagerProps> = ({
 
       {/* Summary KPI Badges */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
+        <div className="bg-white p-4 rounded-md border border-slate-200 shadow-xs">
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Saved Drafts</p>
           <div className="flex items-baseline gap-2 mt-1">
             <span className="text-2xl font-extrabold text-slate-900">{allDrafts.length}</span>
@@ -104,7 +104,7 @@ export const DraftsManager: React.FC<DraftsManagerProps> = ({
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
+        <div className="bg-white p-4 rounded-md border border-slate-200 shadow-xs">
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">ALT-S Technology</p>
           <div className="flex items-baseline gap-2 mt-1">
             <span className="text-2xl font-extrabold text-slate-900">
@@ -114,7 +114,7 @@ export const DraftsManager: React.FC<DraftsManagerProps> = ({
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
+        <div className="bg-white p-4 rounded-md border border-slate-200 shadow-xs">
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Uploaded Files</p>
           <div className="flex items-baseline gap-2 mt-1">
             <span className="text-2xl font-extrabold text-slate-900">
@@ -124,7 +124,7 @@ export const DraftsManager: React.FC<DraftsManagerProps> = ({
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
+        <div className="bg-white p-4 rounded-md border border-slate-200 shadow-xs">
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Workflow Protection</p>
           <div className="flex items-baseline gap-1.5 mt-1">
             <span className="text-xs font-bold text-emerald-600 flex items-center gap-1">
@@ -136,7 +136,7 @@ export const DraftsManager: React.FC<DraftsManagerProps> = ({
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="bg-white p-3.5 rounded-xl border border-slate-200 flex flex-wrap items-center justify-between gap-3 shadow-xs">
+      <div className="bg-white p-3.5 rounded-md border border-slate-200 flex flex-wrap items-center justify-between gap-3 shadow-xs">
         <div className="flex items-center gap-2 flex-1 min-w-[240px]">
           <div className="relative w-full max-w-sm">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -167,8 +167,8 @@ export const DraftsManager: React.FC<DraftsManagerProps> = ({
 
       {/* Drafts List */}
       {filteredDrafts.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center shadow-xs">
-          <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 mx-auto mb-3">
+        <div className="bg-white rounded-lg border border-slate-200 p-12 text-center shadow-xs">
+          <div className="w-14 h-14 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400 mx-auto mb-3">
             <FileEdit size={26} />
           </div>
           <h3 className="font-bold text-slate-700 text-base">
@@ -181,7 +181,7 @@ export const DraftsManager: React.FC<DraftsManagerProps> = ({
           </p>
           <button
             onClick={onOpenCreate}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-[#0052cc] hover:bg-[#0065ff] text-white text-xs font-bold rounded-xl transition-colors"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-brand-900 hover:bg-brand-800 text-white text-xs font-bold rounded-md transition-colors"
           >
             <Plus size={14} />
             <span>Create or Upload a Document</span>
@@ -196,11 +196,11 @@ export const DraftsManager: React.FC<DraftsManagerProps> = ({
             return (
               <div
                 key={doc.id}
-                className="bg-white rounded-xl border border-slate-200 hover:border-indigo-300 p-4 transition-all shadow-xs hover:shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4"
+                className="bg-white rounded-md border border-slate-200 hover:border-indigo-300 p-4 transition-all shadow-xs hover:shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4"
               >
                 {/* Left: Document info */}
                 <div className="flex items-start gap-3.5 min-w-0">
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${
+                  <div className={`w-10 h-10 rounded-md flex items-center justify-center shrink-0 border ${
                     isUploaded
                       ? 'bg-amber-50 text-amber-700 border-amber-200'
                       : 'bg-indigo-50 text-indigo-700 border-indigo-200'
@@ -257,7 +257,7 @@ export const DraftsManager: React.FC<DraftsManagerProps> = ({
 
                   <button
                     onClick={() => onContinueEditing(doc)}
-                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#0052cc] hover:bg-[#0065ff] active:bg-[#0747a6] text-white text-xs font-bold transition-all shadow-xs"
+                    className="flex items-center gap-2 px-4 py-2 rounded-md bg-brand-900 hover:bg-brand-800 active:bg-brand-950 text-white text-xs font-bold transition-all shadow-xs"
                   >
                     <span>Continue Editing</span>
                     <ArrowRight size={14} />
@@ -272,8 +272,8 @@ export const DraftsManager: React.FC<DraftsManagerProps> = ({
       {/* Delete Confirmation Modal */}
       {deleteConfirmDoc && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-5 border border-slate-200 animate-in zoom-in-95 duration-150">
-            <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center mb-3">
+          <div className="bg-white rounded-lg shadow-xl max-w-sm w-full p-5 border border-slate-200 animate-in zoom-in-95 duration-150">
+            <div className="w-10 h-10 rounded-md bg-rose-50 text-rose-600 flex items-center justify-center mb-3">
               <Trash2 size={20} />
             </div>
             <h3 className="font-bold text-base text-slate-900">Discard this draft?</h3>
@@ -283,13 +283,13 @@ export const DraftsManager: React.FC<DraftsManagerProps> = ({
             <div className="flex gap-2.5">
               <button
                 onClick={() => setDeleteConfirmDoc(null)}
-                className="flex-1 py-2 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
+                className="flex-1 py-2 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-md transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={() => handleDeleteDraft(deleteConfirmDoc)}
-                className="flex-1 py-2 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition-colors shadow-xs"
+                className="flex-1 py-2 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-md transition-colors shadow-xs"
               >
                 Discard Draft
               </button>

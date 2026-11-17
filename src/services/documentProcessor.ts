@@ -73,12 +73,16 @@ export class DocumentProcessor {
     documentNumber: string = 'DOC-2026-000124',
     qrDataUrl: string = ''
   ): string {
-    const isSifra = interpolatedContent.includes('SIFRA') || values.company_name?.includes('SIFRA');
-    const companyName = isSifra ? 'Sifratech Solutions' : 'ALT-S TECHNOLOGY PRIVATE LIMITED';
-    const logoUrl = isSifra ? '/Sifratech.png' : '/altslogo.png';
-    const companyAddress = isSifra 
-      ? 'Sifratech Tech Park, Bangalore, India'
-      : 'No. 4, Mullai Street, Thiruvalluvar Nagar,\nKamarajnagar, Poonamallee, Tiruvallur,\nTamil Nadu - 600071, INDIA';
+    const isLink = interpolatedContent.toLowerCase().includes('link erp') || values.company_name?.toLowerCase().includes('link erp') || values.companyId === 'link_erp';
+    const isSifra = interpolatedContent.toLowerCase().includes('sifra') || values.company_name?.toLowerCase().includes('sifra') || values.companyId === 'sifratech';
+    
+    const companyName = isLink ? 'Link ERP Enterprise Systems' : (isSifra ? 'Sifratech Solutions' : 'ALT-S TECHNOLOGY PRIVATE LIMITED');
+    const logoUrl = isLink ? '/LinkERP.png' : (isSifra ? '/Sifratech.png' : '/altslogo.png');
+    const companyAddress = isLink
+      ? 'Link ERP Hub, Mumbai, India'
+      : (isSifra 
+          ? 'Sifratech Tech Park, Bangalore, India'
+          : 'No. 4, Mullai Street, Thiruvalluvar Nagar,\nKamarajnagar, Poonamallee, Tiruvallur,\nTamil Nadu - 600071, INDIA');
 
     // Annexure I Compensation Table renderer if placeholders exist
     let formattedContent = interpolatedContent;

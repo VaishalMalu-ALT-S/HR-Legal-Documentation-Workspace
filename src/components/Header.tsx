@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  Search, Plus
+  Search, Plus, PenTool, FileText
 } from 'lucide-react';
 
 import { RoleSwitcher } from './RoleSwitcher';
@@ -31,7 +31,11 @@ export const Header: React.FC<HeaderProps> = ({
 
   const handleSearchKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && searchValue.trim()) {
-      onNavigate?.('vault', { search: searchValue });
+      if (currentRole === 'hr') {
+        onNavigate?.('drafts', { search: searchValue });
+      } else {
+        onNavigate?.('approval', { search: searchValue });
+      }
     }
   };
 
@@ -60,33 +64,39 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
 
           {showAppSwitcher && (
-            <div className="absolute top-10 left-0 w-64 bg-white rounded-xl shadow-2xl border border-slate-200 p-3 z-50 text-xs animate-in zoom-in-95 duration-150">
-              <p className="font-bold text-slate-800 uppercase tracking-wider text-[10px] mb-2 px-1">ALT-S Apps & Tools</p>
+            <div className="absolute top-10 left-0 w-64 bg-white rounded-lg shadow-xl border border-slate-200 p-3 z-50 text-xs animate-in zoom-in-95 duration-150">
+              <p className="font-bold text-slate-800 uppercase tracking-wider text-[10px] mb-2 px-1">ALT-S Apps &amp; Tools</p>
               <div className="space-y-1">
                 <button
                   onClick={() => { onNavigate?.('signature'); setShowAppSwitcher(false); }}
-                  className="w-full text-left p-2 rounded-lg hover:bg-slate-50 hover:text-brand-900 flex items-center gap-2.5 transition-colors"
+                  className="w-full text-left p-2 rounded-md hover:bg-slate-50 hover:text-brand-900 flex items-center gap-2.5 transition-colors"
                 >
-                  <div className="w-6 h-6 rounded bg-indigo-100 text-brand-900 flex items-center justify-center font-bold text-[10px]">✍</div>
+                  <div className="w-6 h-6 rounded bg-slate-100 text-brand-900 flex items-center justify-center">
+                    <PenTool className="w-3.5 h-3.5" />
+                  </div>
                   <div>
-                    <div className="font-bold text-slate-800">Sign & Stamp Studio</div>
-                    <div className="text-[10px] text-slate-500">Sign PDFs & DOCX docs</div>
+                    <div className="font-bold text-slate-800">Sign &amp; Stamp Studio</div>
+                    <div className="text-[10px] text-slate-500">Sign PDFs &amp; DOCX docs</div>
                   </div>
                 </button>
-                <button
-                  onClick={() => { onNavigate?.('builder'); setShowAppSwitcher(false); }}
-                  className="w-full text-left p-2 rounded-lg hover:bg-slate-50 hover:text-brand-900 flex items-center gap-2.5 transition-colors"
-                >
-                  <div className="w-6 h-6 rounded bg-slate-100 text-brand-900 flex items-center justify-center font-bold text-[10px]">📄</div>
-                  <div>
-                    <div className="font-bold text-slate-800">ALT-S Letterhead Editor</div>
-                    <div className="text-[10px] text-slate-500">Multi-page A4 templates</div>
-                  </div>
-                </button>
+                {currentRole === 'hr' && (
+                  <button
+                    onClick={() => { onNavigate?.('builder'); setShowAppSwitcher(false); }}
+                    className="w-full text-left p-2 rounded-md hover:bg-slate-50 hover:text-brand-900 flex items-center gap-2.5 transition-colors"
+                  >
+                    <div className="w-6 h-6 rounded bg-slate-100 text-brand-900 flex items-center justify-center">
+                      <FileText className="w-3.5 h-3.5" />
+                    </div>
+                    <div>
+                      <div className="font-bold text-slate-800">ALT-S Letterhead Editor</div>
+                      <div className="text-[10px] text-slate-500">Multi-page A4 templates</div>
+                    </div>
+                  </button>
+                )}
 
                 <button
                   onClick={() => {
-                    setShowProfileMenu(false);
+                    setShowAppSwitcher(false);
                     onLogout && onLogout();
                   }}
                   className="w-full text-left p-2 rounded hover:bg-rose-50 text-rose-600 transition-colors flex items-center justify-between mt-1"
@@ -200,36 +210,38 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
 
           {showProfileMenu && (
-            <div className="absolute top-10 right-0 w-52 bg-white rounded-xl shadow-2xl border border-slate-200 p-3 z-50 text-xs animate-in zoom-in-95 duration-150">
+            <div className="absolute top-10 right-0 w-52 bg-white rounded-lg shadow-xl border border-slate-200 p-3 z-50 text-xs animate-in zoom-in-95 duration-150">
               <div className="pb-2 border-b border-slate-100">
                 <p className="font-bold text-brand-900">
                   {currentRole === 'siva_kumar' ? 'Siva Kumar' : currentRole === 'uma_mageshwari' ? 'Uma Mageshwari' : 'ALT-S HR Operations'}
                 </p>
-                <p className="text-[10px] text-slate-500">
-                  {currentRole === 'siva_kumar' ? 'director@alt-s.com' : currentRole === 'uma_mageshwari' ? 'bod@alt-s.com' : 'hr@alt-s.com'}
+                <p className="text-[10px] text-slate-500 font-mono">
+                  {currentRole === 'siva_kumar' ? 'siva@alt-s.com' : currentRole === 'uma_mageshwari' ? 'uma@alt-s.com' : 'hr@alt-s.com'}
                 </p>
-                <span className="inline-block mt-1 px-1.5 py-0.5 bg-emerald-50 text-brand-900 font-bold text-[9px] rounded border border-emerald-200">
-                  ● Enterprise Active
+                <span className="inline-block mt-1 px-1.5 py-0.5 bg-slate-100 text-slate-700 font-semibold text-[9px] rounded border border-slate-200">
+                  Enterprise Verified
                 </span>
               </div>
-              <div className="pt-2 space-y-1">
-                <button
-                  onClick={() => { onNavigate?.('builder'); setShowProfileMenu(false); }}
-                  className="w-full text-left px-2 py-1.5 hover:bg-slate-50 rounded text-slate-700"
-                >
-                  Document Builder
-                </button>
-              </div>
+              {currentRole === 'hr' && (
+                <div className="pt-2 space-y-1">
+                  <button
+                    onClick={() => { onNavigate?.('builder'); setShowProfileMenu(false); }}
+                    className="w-full text-left px-2 py-1.5 hover:bg-slate-50 rounded text-slate-700"
+                  >
+                    Document Builder
+                  </button>
+                </div>
+              )}
               <div className="pt-2 mt-2 border-t border-slate-100 space-y-1">
                 <button
                   onClick={() => {
                     setShowProfileMenu(false);
                     onExpireSession && onExpireSession();
                   }}
-                  className="w-full text-left p-2 rounded hover:bg-amber-50 text-slate-700 hover:text-brand-900 transition-colors flex items-center justify-between"
+                  className="w-full text-left p-2 rounded hover:bg-slate-50 text-slate-700 hover:text-brand-900 transition-colors flex items-center justify-between"
                 >
                   <span className="font-semibold">Lock Session</span>
-                  <span className="text-[10px] bg-slate-100 text-brand-900 px-1 rounded">UX Test</span>
+                  <span className="text-[10px] bg-slate-100 text-slate-600 px-1 rounded">Security</span>
                 </button>
 
                 <button

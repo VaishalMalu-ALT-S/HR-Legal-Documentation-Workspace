@@ -51,9 +51,24 @@ export class DatabaseService {
   }
 
   /**
+   * Cross-tab storage listener for real-time sync across multiple browser tabs
+   */
+  static initStorageListener() {
+    if (typeof window !== 'undefined' && !(window as any).__db_storage_listener_attached) {
+      window.addEventListener('storage', (e) => {
+        if (e.key && Object.values(STORAGE_KEYS).includes(e.key)) {
+          DatabaseService.notifySubscribers();
+        }
+      });
+      (window as any).__db_storage_listener_attached = true;
+    }
+  }
+
+  /**
    * Subscribe to store updates
    */
   static subscribe(callback: () => void) {
+    this.initStorageListener();
     this.subscribers.push(callback);
     return () => {
       this.subscribers = this.subscribers.filter(cb => cb !== callback);
@@ -278,7 +293,10 @@ export class DatabaseService {
   }
 
   static async createDocument(docData: Omit<SmartDocument, 'id' | 'documentNumber' | 'documentHash' | 'originalHash' | 'isTampered' | 'qrVerificationCode' | 'verificationUrl' | 'createdAt' | 'updatedAt' | 'signatures'>): Promise<SmartDocument> {
-    // Note: createDocument is only reachable from HR-authenticated UI flows
+    const sessionRole = this.getSessionRole();
+    if (sessionRole !== 'hr') {
+      throw new Error("403 Forbidden: Only HR Administrators can create documents.");
+    }
     const documents = this.getDocuments();
     const docNumber = `DOC-2026-${String(documents.length + 125).padStart(6, '0')}`;
     
@@ -368,7 +386,7 @@ export class DatabaseService {
   
   static authorizeDocumentSignatory(
     documentId: string,
-    signatoryRole: string, // 'siva_kumar' | 'uma_mageshwari'
+    signatoryRole: 'siva_kumar' | 'uma_mageshwari',
     signatoryEmail: string,
     method: 'otp' | 'direct' = 'otp'
   ): import('../types').SmartDocument {
@@ -381,19 +399,22 @@ export class DatabaseService {
       doc.authorizations = [];
     }
     
+    // Check if an active unused authorization already exists for this exact role
+    const existingIndex = doc.authorizations.findIndex(a => a.signatoryRole === signatoryRole && !a.usedAt);
     const signatoryName = signatoryRole === 'siva_kumar' ? 'Siva Kumar' : 'Uma Mageshwari';
     
-    const newAuth = {
-      id: `auth-${Date.now()}`,
-      documentId,
-      signatoryRole,
-      signatoryName,
-      signatoryEmail,
-      method,
-      authorizedAt: new Date().toISOString()
-    };
-    
-    doc.authorizations.push(newAuth as any);
+    if (existingIndex === -1) {
+      const newAuth = {
+        id: `auth-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        documentId,
+        signatoryRole,
+        signatoryName,
+        signatoryEmail,
+        method,
+        authorizedAt: new Date().toISOString()
+      };
+      doc.authorizations.push(newAuth as any);
+    }
     
     // Update step status to approved for the workflow
     if (doc.approvalWorkflow && doc.approvalWorkflow.steps) {
@@ -441,6 +462,10 @@ export class DatabaseService {
     draftData: Partial<SmartDocument> & { title: string },
     existingDocId?: string
   ): Promise<SmartDocument> {
+    const sessionRole = this.getSessionRole();
+    if (sessionRole !== 'hr') {
+      throw new Error("403 Forbidden: Only HR Administrators can save drafts.");
+    }
     const documents: SmartDocument[] = JSON.parse(this.safeGetItem(STORAGE_KEYS.DOCUMENTS) || '[]');
 
     const targetId = existingDocId || draftData.id;
@@ -454,6 +479,8 @@ export class DatabaseService {
     if (existingIndex !== -1) {
       // UPDATE EXISTING DRAFT (same document ID, no duplicates)
       const existing = documents[existingIndex];
+      const contentChanged = Boolean(existing.documentHash && existing.documentHash !== hash);
+      
       const updatedDoc: SmartDocument = {
         ...existing,
         ...draftData,
@@ -461,8 +488,11 @@ export class DatabaseService {
         documentNumber: existing.documentNumber,
         status: 'draft',
         documentHash: hash,
+        originalHash: existing.originalHash || hash,
         updatedAt: now,
-        // Preserve signatures and approval workflow if not supplied
+        // Material changes invalidate unused authorizations
+        authorizations: contentChanged ? [] : (existing.authorizations || []),
+        // Preserve signatures
         signatures: existing.signatures || [],
         approvalWorkflow: draftData.approvalWorkflow || existing.approvalWorkflow || {
           id: `wf-${Date.now()}`,
@@ -483,8 +513,8 @@ export class DatabaseService {
       this.logAuditAction(
         draftData.generatedBy || 'HR Admin',
         'hr',
-        'Draft Updated',
-        `Draft document ${updatedDoc.documentNumber} (${updatedDoc.title}) updated.`,
+        contentChanged ? 'Draft Modified (Authorizations Reset)' : 'Draft Updated',
+        `Draft document ${updatedDoc.documentNumber} (${updatedDoc.title}) updated.${contentChanged ? ' Content modified; authorizations reset.' : ''}`,
         updatedDoc.id,
         updatedDoc.documentNumber,
         'draft',
@@ -569,6 +599,10 @@ export class DatabaseService {
   }
 
   static deleteDocument(id: string): void {
+    const sessionRole = this.getSessionRole();
+    if (sessionRole !== 'hr') {
+      throw new Error("403 Forbidden: Only HR Administrators can delete documents.");
+    }
     let documents: SmartDocument[] = JSON.parse(this.safeGetItem(STORAGE_KEYS.DOCUMENTS) || '[]');
     const doc = documents.find(d => d.id === id);
     documents = documents.filter(d => d.id !== id);
@@ -613,10 +647,23 @@ export class DatabaseService {
     signatoryEmail: string,
     requestedBy: string
   ): import('../types').SignatureRequest {
+    const sessionRole = this.getSessionRole();
+    if (sessionRole !== 'hr') {
+      throw new Error('403 Forbidden: Only HR Administrators can create signature requests.');
+    }
     const doc = this.getDocumentById(documentId);
     if (!doc) throw new Error('Document not found');
 
     const signatoryName = signatoryRole === 'siva_kumar' ? 'Siva Kumar' : 'Uma Mageshwari';
+    
+    // Prevent duplicate pending requests for the same signer on the same doc
+    const existingReq = this.getSignatureRequests().find(
+      r => r.documentId === documentId && r.signatoryRole === signatoryRole && r.status === 'pending'
+    );
+    if (existingReq) {
+      return existingReq;
+    }
+
     const req: import('../types').SignatureRequest = {
       id: `sreq-${Date.now()}-${Math.random().toString(36).slice(2,7)}`,
       documentId,
@@ -674,6 +721,11 @@ export class DatabaseService {
     const i = reqs.findIndex((r: any) => r.id === requestId);
     if (i === -1) throw new Error('Signature request not found');
 
+    const sessionRole = this.getSessionRole();
+    if (sessionRole !== reqs[i].signatoryRole) {
+      throw new Error(`403 Forbidden: Only ${reqs[i].signatoryName} (${reqs[i].signatoryRole}) can approve this signature request.`);
+    }
+
     const otp = String(Math.floor(100000 + Math.random() * 900000));
     const now = new Date();
     const expires = new Date(now.getTime() + 10 * 60 * 1000);
@@ -695,6 +747,11 @@ export class DatabaseService {
 
   /** HR enters the OTP communicated by Siva/Uma */
   static hrVerifySignatureOtp(requestId: string, enteredOtp: string): import('../types').SignatureRequest {
+    const sessionRole = this.getSessionRole();
+    if (sessionRole !== 'hr') {
+      throw new Error('403 Forbidden: Only HR Administrators can verify signature OTPs.');
+    }
+
     const reqs = this.getSignatureRequests();
     const i = reqs.findIndex((r: any) => r.id === requestId);
     if (i === -1) throw new Error('Signature request not found');
@@ -711,7 +768,8 @@ export class DatabaseService {
     }
 
     const now = new Date().toISOString();
-    reqs[i] = { ...req, otpVerifiedAt: now, authorizedAt: now };
+    // Invalidate OTP after successful single-use verification
+    reqs[i] = { ...req, otpCode: undefined, otpVerifiedAt: now, authorizedAt: now };
     this.saveSignatureRequests(reqs);
 
     // Unlock the signature on the document
@@ -767,8 +825,12 @@ export class DatabaseService {
   static recordSignaturePlacement(
     documentId: string,
     signatoryRole: string,
-    hrUserName: string
+    hrUserName: string = 'HR Admin'
   ): import('../types').SmartDocument {
+    const sessionRole = this.getSessionRole();
+    if (sessionRole !== 'hr') {
+      throw new Error('403 Forbidden: Only HR Administrators can place signatures.');
+    }
     const documents = this.getDocuments();
     const index = documents.findIndex(d => d.id === documentId);
     if (index === -1) throw new Error('Document not found');
@@ -785,7 +847,7 @@ export class DatabaseService {
       
       // If all required signatures are placed, update status to signed
       const allRequired = doc.approvalWorkflow?.steps.map(s => s.roleName) || [];
-      const allPlaced = allRequired.every(role => 
+      const allPlaced = allRequired.length > 0 && allRequired.every(role => 
         doc.authorizations?.some(a => a.signatoryRole === role && a.usedAt)
       );
       
@@ -800,7 +862,7 @@ export class DatabaseService {
         hrUserName,
         'hr',
         'Signature Placed',
-        `${signatoryName}'s authorized signature was placed by HR.`,
+        `${signatoryName}'s authorized signature was placed by HR (${hrUserName}).`,
         doc.id,
         doc.documentNumber,
         doc.status,
@@ -809,6 +871,52 @@ export class DatabaseService {
       
       this.notifySubscribers();
     }
+    return doc;
+  }
+
+  static async finalizeDocument(documentId: string, hrUserName: string = 'HR Admin'): Promise<SmartDocument> {
+    const sessionRole = this.getSessionRole();
+    if (sessionRole !== 'hr') {
+      throw new Error('403 Forbidden: Only HR Administrators can finalize documents.');
+    }
+    const documents = this.getDocuments();
+    const index = documents.findIndex(d => d.id === documentId);
+    if (index === -1) throw new Error('Document not found');
+
+    const doc = documents[index];
+    const prevStatus = doc.status;
+    doc.status = 'completed';
+    const now = new Date().toISOString();
+    doc.completedAt = now;
+    doc.updatedAt = now;
+
+    // Generate cryptographic final document hash over entire payload
+    const finalPayload = JSON.stringify({
+      id: doc.id,
+      documentNumber: doc.documentNumber,
+      content: doc.variableValues,
+      signatures: doc.signatures,
+      authorizations: doc.authorizations,
+      completedAt: now
+    });
+    doc.documentHash = await CryptoService.generateSHA256(finalPayload);
+    doc.originalHash = doc.documentHash;
+    doc.isTampered = false;
+
+    documents[index] = doc;
+    this.safeSetItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(documents));
+
+    this.logAuditAction(
+      hrUserName,
+      'hr',
+      'Document Finalized',
+      `Document ${doc.documentNumber} (${doc.title}) finalized. Status changed to completed with immutable hash ${doc.documentHash.substring(0, 12)}...`,
+      doc.id,
+      doc.documentNumber,
+      prevStatus,
+      'completed'
+    );
+    this.notifySubscribers();
     return doc;
   }
 

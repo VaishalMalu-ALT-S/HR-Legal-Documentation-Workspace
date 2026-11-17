@@ -675,11 +675,50 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
   /* ── Export to PDF ── */
   const handleDownload = async () => {
     if (!canvasRef.current) return;
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    const c = await html2canvas(canvasRef.current, { scale: 2, useCORS: true });
-    pdf.addImage(c.toDataURL('image/png'), 'PNG', 0, 0, 210, 297);
-    pdf.save(`Signed_${docName.replace(/\.[^/.]+$/, "")}.pdf`);
-    onSignatureSuccess?.({});
+    try {
+      setDocLoading(true);
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      
+      if (hasUploadedDoc && docPages.length > 1) {
+        // Multi-page uploaded document: render all pages
+        for (let i = 0; i < docPages.length; i++) {
+          if (i > 0) pdf.addPage('a4', 'p');
+          const img = new Image();
+          await new Promise<void>((resolve) => {
+            img.onload = () => resolve();
+            img.src = docPages[i];
+          });
+          pdf.addImage(img, 'PNG', 0, 0, 210, 297);
+        }
+      } else {
+        const c = await html2canvas(canvasRef.current, { scale: 2, useCORS: true });
+        pdf.addImage(c.toDataURL('image/png'), 'PNG', 0, 0, 210, 297);
+      }
+      
+      pdf.save(`Signed_${docName.replace(/\.[^/.]+$/, "")}.pdf`);
+      setSaveFeedback('PDF downloaded successfully.');
+      setTimeout(() => setSaveFeedback(null), 3000);
+      onSignatureSuccess?.({});
+    } catch (err: any) {
+      setSaveError(err.message || 'Error generating PDF');
+      setTimeout(() => setSaveError(null), 3000);
+    } finally {
+      setDocLoading(false);
+    }
+  };
+
+  const handleFinalize = async () => {
+    const docId = currentDocId || targetDoc?.id;
+    if (!docId) return;
+    try {
+      const finalized = await DatabaseService.finalizeDocument(docId, 'HR Admin');
+      setSaveFeedback(`Document ${finalized.documentNumber} Finalized! Status: Completed.`);
+      setTimeout(() => setSaveFeedback(null), 4000);
+      onSignatureSuccess?.({});
+    } catch (e: any) {
+      setSaveError(e.message || 'Failed to finalize document');
+      setTimeout(() => setSaveError(null), 4000);
+    }
   };
 
   /* ── Render Document Template ── */
@@ -856,15 +895,31 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
             <span>{isPreviewMode ? 'Exit Preview' : 'Preview'}</span>
           </button>
 
-          {isApproved && (
+          {targetDoc?.status === 'completed' && (
+            <span className="text-[11px] font-bold px-2.5 py-1 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-300 flex items-center gap-1">
+              <CheckCircle2 size={13} className="text-emerald-700" />
+              <span>Completed &amp; Sealed</span>
+            </span>
+          )}
+
+          {currentRole === 'hr' && targetDoc?.status !== 'completed' && (targetDoc?.status === 'signed' || sigs.length > 0) && (
             <button
-              onClick={handleDownload}
-              className="bg-brand-900 hover:bg-brand-800 text-white text-[12px] font-semibold px-4 py-1.5 rounded shadow-xs flex items-center gap-1.5 transition-colors"
+              onClick={handleFinalize}
+              className="bg-brand-900 hover:bg-brand-800 text-white text-[12px] font-semibold px-3 py-1.5 rounded-md shadow-xs flex items-center gap-1.5 transition-colors"
+              title="Finalize document and generate cryptographic SHA-256 seal"
             >
-              <Download size={14} />
-              <span>Finish &amp; Save</span>
+              <CheckCircle2 size={14} />
+              <span>Finalize Document</span>
             </button>
           )}
+
+          <button
+            onClick={handleDownload}
+            className="bg-slate-800 hover:bg-slate-700 text-white text-[12px] font-semibold px-3.5 py-1.5 rounded-md shadow-xs flex items-center gap-1.5 transition-colors"
+          >
+            <Download size={14} />
+            <span>Download PDF</span>
+          </button>
         </div>
       </div>
 
@@ -1067,8 +1122,9 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
                 <div>
                   <p className="font-bold text-[12px] text-slate-800">{approverName}</p>
                   <p className="text-[11px] text-slate-500">{approverTitle} - {selectedCompany.name}</p>
-                  <div className="mt-1.5 text-[9.5px] text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 inline-block">
-                    ✓ Verified Corporate Seal
+                  <div className="mt-1.5 text-[9.5px] text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 inline-flex items-center gap-1">
+                    <CheckCircle2 size={11} />
+                    <span>Verified Corporate Seal</span>
                   </div>
                 </div>
 
@@ -1289,19 +1345,19 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
               {currentRole === 'hr' && (
                 <button
                   onClick={() => {
-                    const isAuth = targetDoc?.authorizations?.some(a => (a.signatoryRole === 'siva_kumar' || a.signatoryRole === 'Authorized Signatory' || a.signatoryName === 'Siva Kumar') && !a.usedAt);
+                    const isAuth = targetDoc?.authorizations?.some(a => a.signatoryRole === 'siva_kumar' && !a.usedAt);
                     if (!isAuth) return;
                     addSig('/sign1.jpg', 'signature', 'siva_kumar');
                   }}
-                  disabled={!(targetDoc?.authorizations?.some(a => (a.signatoryRole === 'siva_kumar' || a.signatoryRole === 'Authorized Signatory' || a.signatoryName === 'Siva Kumar') && !a.usedAt))}
-                  className={`flex items-center gap-1 px-2.5 py-1 rounded-lg font-semibold text-[11.5px] transition-colors ${
-                    !(targetDoc?.authorizations?.some(a => (a.signatoryRole === 'siva_kumar' || a.signatoryRole === 'Authorized Signatory' || a.signatoryName === 'Siva Kumar') && !a.usedAt))
+                  disabled={!(targetDoc?.authorizations?.some(a => a.signatoryRole === 'siva_kumar' && !a.usedAt))}
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded-md font-semibold text-[11.5px] transition-colors ${
+                    !(targetDoc?.authorizations?.some(a => a.signatoryRole === 'siva_kumar' && !a.usedAt))
                       ? 'text-slate-400 bg-slate-50 cursor-not-allowed border border-slate-200' 
                       : 'text-[#172b4d] hover:bg-[#ebecf0]'
                   }`}
-                  title={!(targetDoc?.authorizations?.some(a => (a.signatoryRole === 'siva_kumar' || a.signatoryRole === 'Authorized Signatory' || a.signatoryName === 'Siva Kumar') && !a.usedAt)) ? "Locked: Awaiting Manager Approval or Signature Already Used" : "Place Siva Kumar Signature"}
+                  title={!(targetDoc?.authorizations?.some(a => a.signatoryRole === 'siva_kumar' && !a.usedAt)) ? "Locked: Awaiting Siva Kumar's OTP authorization" : "Place Siva Kumar Signature"}
                 >
-                  {!(targetDoc?.authorizations?.some(a => (a.signatoryRole === 'siva_kumar' || a.signatoryRole === 'Authorized Signatory' || a.signatoryName === 'Siva Kumar') && !a.usedAt)) ? <Lock size={12} className="text-rose-500" /> : <Pen size={14} className="text-brand-900" />}
+                  {!(targetDoc?.authorizations?.some(a => a.signatoryRole === 'siva_kumar' && !a.usedAt)) ? <Lock size={12} className="text-rose-500" /> : <Pen size={14} className="text-brand-900" />}
                   <span>Siva Kumar</span>
                 </button>
               )}
@@ -1310,19 +1366,19 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
               {currentRole === 'hr' && (
                 <button
                   onClick={() => {
-                    const isAuth = targetDoc?.authorizations?.some(a => (a.signatoryRole === 'uma_mageshwari' || a.signatoryRole === 'Authorized Signatory' || a.signatoryName === 'Uma Mageshwari') && !a.usedAt);
+                    const isAuth = targetDoc?.authorizations?.some(a => a.signatoryRole === 'uma_mageshwari' && !a.usedAt);
                     if (!isAuth) return;
                     addSig('/sign2.jpg', 'signature', 'uma_mageshwari');
                   }}
-                  disabled={!(targetDoc?.authorizations?.some(a => (a.signatoryRole === 'uma_mageshwari' || a.signatoryRole === 'Authorized Signatory' || a.signatoryName === 'Uma Mageshwari') && !a.usedAt))}
-                  className={`flex items-center gap-1 px-2.5 py-1 rounded-lg font-semibold text-[11.5px] transition-colors ${
-                    !(targetDoc?.authorizations?.some(a => (a.signatoryRole === 'uma_mageshwari' || a.signatoryRole === 'Authorized Signatory' || a.signatoryName === 'Uma Mageshwari') && !a.usedAt))
+                  disabled={!(targetDoc?.authorizations?.some(a => a.signatoryRole === 'uma_mageshwari' && !a.usedAt))}
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded-md font-semibold text-[11.5px] transition-colors ${
+                    !(targetDoc?.authorizations?.some(a => a.signatoryRole === 'uma_mageshwari' && !a.usedAt))
                       ? 'text-slate-400 bg-slate-50 cursor-not-allowed border border-slate-200' 
                       : 'text-[#172b4d] hover:bg-[#ebecf0]'
                   }`}
-                  title={!(targetDoc?.authorizations?.some(a => (a.signatoryRole === 'uma_mageshwari' || a.signatoryRole === 'Authorized Signatory' || a.signatoryName === 'Uma Mageshwari') && !a.usedAt)) ? "Locked: Awaiting Manager Approval or Signature Already Used" : "Place Uma Mageshwari Signature"}
+                  title={!(targetDoc?.authorizations?.some(a => a.signatoryRole === 'uma_mageshwari' && !a.usedAt)) ? "Locked: Awaiting Uma Mageshwari's OTP authorization" : "Place Uma Mageshwari Signature"}
                 >
-                  {!(targetDoc?.authorizations?.some(a => (a.signatoryRole === 'uma_mageshwari' || a.signatoryRole === 'Authorized Signatory' || a.signatoryName === 'Uma Mageshwari') && !a.usedAt)) ? <Lock size={12} className="text-rose-500" /> : <Pen size={14} className="text-brand-900" />}
+                  {!(targetDoc?.authorizations?.some(a => a.signatoryRole === 'uma_mageshwari' && !a.usedAt)) ? <Lock size={12} className="text-rose-500" /> : <Pen size={14} className="text-brand-900" />}
                   <span>Uma Mageshwari</span>
                 </button>
               )}

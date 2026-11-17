@@ -21,14 +21,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
   setCurrentTab,
   collapsed,
   setCollapsed,
-  activeDocTemplate = 'offer_letter',
+  activeDocTemplate = 'asset_acknowledgment',
   onSelectDocTemplate,
   currentRole,
   draftsCount = 0,
 }) => {
   const [signingOpen, setSigningOpen] = useState(true);
-  const [automationOpen, setAutomationOpen] = useState(true);
-  const [complianceOpen, setComplianceOpen] = useState(true);
 
   const handleSelectTemplate = (templateKey: string) => {
     if (onSelectDocTemplate) {
@@ -221,7 +219,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     }`}
                   >
                     <CheckCircle2 size={16} className="shrink-0" />
-                    <span className="truncate">Documents to Review</span>
+                    <span className="truncate">Pending Approvals</span>
                   </button>
                 )}
 
@@ -235,21 +233,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     }`}
                   >
                     <PenTool size={16} className="shrink-0" />
-                    <span className="truncate">Approved Documents</span>
-                  </button>
-                )}
-
-                {currentRole !== 'hr' && (
-                  <button
-                    onClick={() => setCurrentTab('signature')}
-                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-[13px] font-semibold transition-colors text-left ${
-                      currentTab === 'signature'
-                        ? 'bg-[#e2e8f0] text-brand-900 font-semibold'
-                        : 'text-[#475569] hover:bg-[#f1f5f9]'
-                    }`}
-                  >
-                    <CheckCircle2 size={16} className="shrink-0" />
-                    <span className="truncate">Completed Documents</span>
+                    <span className="truncate">Signed Documents</span>
                   </button>
                 )}
               </div>

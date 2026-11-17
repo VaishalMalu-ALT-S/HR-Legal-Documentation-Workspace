@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Share2, Copy, Check, X } from 'lucide-react';
+import { Share2, Copy, Check, X, Lock } from 'lucide-react';
 import { DatabaseService } from '../services/dbService';
 
 interface SecureSharingModalProps {
@@ -21,14 +21,14 @@ export const SecureSharingModal: React.FC<SecureSharingModalProps> = ({ document
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-5 animate-fade-in">
+    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-lg max-w-md w-full p-6 shadow-xl border border-slate-200 space-y-5 animate-in fade-in zoom-in-95 duration-150">
         <div className="flex items-center justify-between border-b border-slate-100 pb-3">
           <div className="flex items-center gap-2">
-            <Share2 size={18} className="text-brand-600" />
+            <Share2 size={18} className="text-brand-900" />
             <h3 className="text-base font-bold text-slate-900 font-heading">Secure Share Document</h3>
           </div>
-          <button onClick={onClose} className="p-1 text-slate-400 hover:text-slate-600"><X size={18} /></button>
+          <button onClick={onClose} className="p-1 text-slate-400 hover:text-slate-600 rounded-md"><X size={18} /></button>
         </div>
 
         <div className="space-y-4 text-xs">
@@ -38,7 +38,7 @@ export const SecureSharingModal: React.FC<SecureSharingModalProps> = ({ document
             <select
               value={expiryDays}
               onChange={e => setExpiryDays(Number(e.target.value))}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl"
+              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-md"
             >
               <option value={1}>1 Day Expiry</option>
               <option value={7}>7 Days Expiry</option>
@@ -47,7 +47,7 @@ export const SecureSharingModal: React.FC<SecureSharingModalProps> = ({ document
           </div>
 
           {/* Password Protection Toggle */}
-          <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-200">
+          <div className="flex items-center justify-between p-3 bg-slate-50 rounded-md border border-slate-200">
             <div>
               <div className="font-bold text-slate-900">Password Protection</div>
               <div className="text-[10px] text-slate-500">Require recipient password to view</div>
@@ -56,7 +56,7 @@ export const SecureSharingModal: React.FC<SecureSharingModalProps> = ({ document
               type="checkbox"
               checked={passwordProtected}
               onChange={e => setPasswordProtected(e.target.checked)}
-              className="w-4 h-4 text-brand-600 rounded"
+              className="w-4 h-4 text-brand-900 rounded border-slate-300 focus:ring-brand-900"
             />
           </div>
 
@@ -68,11 +68,11 @@ export const SecureSharingModal: React.FC<SecureSharingModalProps> = ({ document
                 type="text"
                 readOnly
                 value={sharedLink.shareUrl}
-                className="flex-1 px-3 py-2 bg-slate-100 border border-slate-200 rounded-xl font-mono text-[11px] text-slate-800"
+                className="flex-1 px-3 py-2 bg-slate-100 border border-slate-200 rounded-md font-mono text-[11px] text-slate-800"
               />
               <button
                 onClick={handleCopy}
-                className="px-3 py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-xl font-bold flex items-center gap-1.5 shrink-0"
+                className="px-3 py-2 bg-brand-900 hover:bg-brand-800 text-white rounded-md font-bold flex items-center gap-1.5 shrink-0"
               >
                 {copied ? <Check size={14} /> : <Copy size={14} />}
                 {copied ? 'Copied' : 'Copy'}
@@ -81,8 +81,9 @@ export const SecureSharingModal: React.FC<SecureSharingModalProps> = ({ document
           </div>
         </div>
 
-        <div className="pt-2 text-[10px] text-slate-400 text-center">
-          🔒 Links are log-tracked and auto-expire based on access policy.
+        <div className="pt-2 text-[10px] text-slate-400 text-center flex items-center justify-center gap-1">
+          <Lock size={12} className="text-slate-400" />
+          <span>Links are log-tracked and auto-expire based on access policy.</span>
         </div>
       </div>
     </div>
