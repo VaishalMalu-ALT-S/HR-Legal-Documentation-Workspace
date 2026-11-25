@@ -298,10 +298,20 @@ export const ApprovalWorkflow: React.FC<SignatureRequestsProps> = ({
                     <div className="bg-white border border-slate-200 shadow-sm rounded-lg p-5 flex items-center justify-between gap-4">
                       <div>
                         <div className="flex items-center gap-2 mb-1">
-                          <CheckCircle2 size={16} className="text-brand-900" />
-                          <p className="font-bold text-brand-900 text-sm">{req.signatoryName}'s Signature is Authorized</p>
+                          <CheckCircle2 size={16} className="text-emerald-600" />
+                          <p className="font-bold text-emerald-900 text-sm">{req.signatoryName}'s Signature is Authorized</p>
                         </div>
+                        <p className="text-xs text-slate-500">
+                          Signature unlocked for placement. Proceed to the Signature Studio to position the signature on the document.
+                        </p>
                       </div>
+                      <button
+                        onClick={() => onNavigateToSignature(selectedDoc.docId)}
+                        className="shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition-colors shadow-sm"
+                      >
+                        <ShieldCheck size={13} />
+                        Place in Signature Studio
+                      </button>
                     </div>
                   )}
 

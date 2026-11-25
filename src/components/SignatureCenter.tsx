@@ -506,7 +506,7 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
   const addSig = (src: string, type: 'signature' | 'stamp' | 'date' = 'signature', signatoryRole?: string) => {
     setIsDirty(true);
     if (type === 'signature' && signatoryRole && (currentDocId || targetDoc)) {
-      DatabaseService.recordSignaturePlacement(currentDocId || targetDoc!.id, signatoryRole, 'Suresh Kumar');
+      DatabaseService.recordSignaturePlacement(currentDocId || targetDoc!.id, signatoryRole, localStorage.getItem('signhr_auth_name') || 'HR Admin');
     }
     if (type === 'signature') {
       storeSig(src);

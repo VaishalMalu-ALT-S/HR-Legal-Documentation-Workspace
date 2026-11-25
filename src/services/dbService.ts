@@ -859,9 +859,14 @@ export class DatabaseService {
     this.saveSignatureRequests(reqs);
     SupabaseSync.pushSignatureRequest(reqs[i]).catch(() => {});
 
-    this.logAuditAction(reqs[i].signatoryName, reqs[i].signatoryRole,
+    this.logAuditAction(
+      reqs[i].signatoryName,
+      reqs[i].signatoryRole,
       'Signature Approved',
-      `${reqs[i].signatoryName} approved signature. OTP generated for ${reqs[i].documentNumber}.`);
+      `${reqs[i].signatoryName} approved signature. OTP generated for ${reqs[i].documentNumber}.`,
+      reqs[i].documentId,
+      reqs[i].documentNumber
+    );
     return reqs[i];
   }
 
@@ -896,8 +901,14 @@ export class DatabaseService {
     // Unlock the signature on the document
     this.authorizeDocumentSignatory(req.documentId, req.signatoryRole, req.signatoryEmail);
 
-    this.logAuditAction('HR Admin', 'hr', 'OTP Verified',
-      `HR verified OTP for ${req.signatoryName}. Signature unlocked on ${req.documentNumber}.`);
+    this.logAuditAction(
+      'HR Admin',
+      'hr',
+      'OTP Verified',
+      `HR verified OTP for ${req.signatoryName}. Signature unlocked on ${req.documentNumber}.`,
+      req.documentId,
+      req.documentNumber
+    );
     return reqs[i];
   }
 

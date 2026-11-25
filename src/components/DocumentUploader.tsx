@@ -1,9 +1,10 @@
 import React, { useState, useCallback } from 'react';
-import { UploadCloud, FileText, ArrowLeft, Loader2, Send, Bookmark } from 'lucide-react';
+import { UploadCloud, FileText, ArrowLeft, Loader2, Send, Bookmark, Building2 } from 'lucide-react';
 import * as mammoth from 'mammoth';
 import html2canvas from 'html2canvas';
 import { DatabaseService } from '../services/dbService';
 import { DocumentCategory } from '../types';
+import { COMPANIES } from '../data/companies';
 
 export const DocumentUploader: React.FC<{ onSwitch: () => void; onSaveSuccess: () => void; }> = ({ onSwitch, onSaveSuccess }) => {
   const [file, setFile] = useState<File | null>(null);
@@ -12,6 +13,7 @@ export const DocumentUploader: React.FC<{ onSwitch: () => void; onSaveSuccess: (
   const [approver, setApprover] = useState<'siva_kumar' | 'uma_mageshwari' | 'both'>('siva_kumar');
   const [docTitle, setDocTitle] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string>('alt_s');
 
   const processDoc = useCallback(async (f: File) => {
     setIsProcessing(true);
@@ -48,6 +50,19 @@ export const DocumentUploader: React.FC<{ onSwitch: () => void; onSaveSuccess: (
         const c = await html2canvas(div, { scale: 2, useCORS: true });
         document.body.removeChild(div);
         setPages([c.toDataURL('image/png')]);
+      } else if (ext === 'txt') {
+        const text = await f.text();
+        const div = document.createElement('div');
+        div.style.cssText =
+          'width:794px;min-height:1050px;background:white;padding:60px 72px;box-sizing:border-box;font-family:Calibri,Arial,sans-serif;font-size:14px;line-height:1.6;position:fixed;left:-9999px;top:0;';
+        div.innerHTML = text
+          .split(/\r?\n/)
+          .map(line => line.trim() === '' ? '<p style="margin-bottom:8px;"><br/></p>' : `<p style="margin-bottom:12px;line-height:1.6;">${line.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</p>`)
+          .join('');
+        document.body.appendChild(div);
+        const c = await html2canvas(div, { scale: 2, useCORS: true });
+        document.body.removeChild(div);
+        setPages([c.toDataURL('image/png')]);
       }
     } catch (err) {
       alert('Failed to process document. Please try a different file.');
@@ -63,7 +78,7 @@ export const DocumentUploader: React.FC<{ onSwitch: () => void; onSaveSuccess: (
       const created = await DatabaseService.saveDraft({
         title: docTitle || file.name,
         category: 'other' as DocumentCategory,
-        companyId: 'alt_s',
+        companyId: selectedCompanyId,
         personName: 'Uploaded Document',
         personEmail: 'hr@alt-s.com',
         personRole: 'N/A',
@@ -113,7 +128,7 @@ export const DocumentUploader: React.FC<{ onSwitch: () => void; onSaveSuccess: (
       const created = await DatabaseService.createDocument({
         title: docTitle || file.name,
         category: 'other' as DocumentCategory,
-        companyId: 'alt_s',
+        companyId: selectedCompanyId,
         personName: 'Uploaded Document',
         personEmail: 'hr@alt-s.com',
         personRole: 'N/A',
@@ -193,16 +208,38 @@ export const DocumentUploader: React.FC<{ onSwitch: () => void; onSaveSuccess: (
           {/* Left panel */}
           <div className="flex-1 space-y-6">
             <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-              <h3 className="text-base font-bold text-slate-800 mb-4">1. Upload File</h3>
+              <h3 className="text-base font-bold text-slate-800 mb-2">1. Company Entity</h3>
+              <p className="text-xs text-slate-500 mb-3">Select which company entity will issue or hold this document.</p>
+              <div className="grid grid-cols-3 gap-3 mb-6">
+                {COMPANIES.map(c => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => setSelectedCompanyId(c.id)}
+                    className={`flex items-center gap-2 p-2.5 rounded-lg border text-left transition-all ${
+                      selectedCompanyId === c.id
+                        ? 'border-indigo-600 bg-indigo-50/50 ring-2 ring-indigo-500/20'
+                        : 'border-slate-200 hover:border-slate-300 bg-white'
+                    }`}
+                  >
+                    <img src={c.logoUrl} alt={c.name} className="h-6 object-contain" />
+                    <div>
+                      <p className="text-xs font-bold text-slate-800">{c.name}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+
+              <h3 className="text-base font-bold text-slate-800 mb-4">2. Upload File</h3>
               {!file ? (
                 <label className="border-2 border-dashed border-indigo-200 bg-indigo-50/50 hover:bg-indigo-50 rounded-xl p-10 flex flex-col items-center justify-center cursor-pointer transition-colors">
                   <UploadCloud size={40} className="text-indigo-500 mb-4" />
                   <p className="text-sm font-bold text-slate-700">Click or drag file to upload</p>
-                  <p className="text-xs text-slate-500 mt-1">Supports PDF, DOC, DOCX</p>
+                  <p className="text-xs text-slate-500 mt-1">Supports PDF, DOC, DOCX, TXT</p>
                   <input
                     type="file"
                     className="hidden"
-                    accept=".pdf,.doc,.docx"
+                    accept=".pdf,.doc,.docx,.txt,text/plain"
                     onChange={(e) => {
                       if (e.target.files?.[0]) processDoc(e.target.files[0]);
                     }}
@@ -233,7 +270,7 @@ export const DocumentUploader: React.FC<{ onSwitch: () => void; onSaveSuccess: (
 
             {pages.length > 0 && (
               <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                <h3 className="text-base font-bold text-slate-800 mb-4">2. Required Signatories</h3>
+                <h3 className="text-base font-bold text-slate-800 mb-4">3. Required Signatories</h3>
                 <p className="text-xs text-slate-500 mb-4">Select who needs to authorize and sign this document.</p>
                 <div className="space-y-3">
                   <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-slate-50 transition-colors">

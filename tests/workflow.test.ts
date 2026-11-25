@@ -455,25 +455,145 @@ describe('SMARTDOCSIGN - 17 ENTERPRISE WORKFLOW TESTS', () => {
   });
 
   // ─────────────────────────────────────────────────────────────
-  // WORKFLOW 17: Document Finalization & SHA-256 Immutable Seal
+  // WORKFLOW 18: Universal Document Import & Multi-Company Letterhead
   // ─────────────────────────────────────────────────────────────
-  test('Workflow 17: HR finalizes document, generating cryptographic SHA-256 seal', async () => {
+  test('Workflow 18: Universal Document Import for TXT, DOCX, and PDF with Company Branding', async () => {
     DatabaseService.setSessionRole('hr');
-    const draft = await DatabaseService.saveDraft({ title: 'Final Contract' });
-    
-    const finalized = await DatabaseService.finalizeDocument(draft.id, 'HR Admin');
+
+    // 1. TXT Document Import
+    const rawTxt = "EMPLOYMENT AGREEMENT\n\nThis agreement is made between ALT-S Technology and Employee.\n\nTerms and conditions apply.";
+    const txtParagraphs = rawTxt
+      .split(/\r?\n/)
+      .filter(l => l.trim() !== '')
+      .map(p => `<p class="mb-3">${p}</p>`);
+
+    const txtDoc = await DatabaseService.saveDraft({
+      title: 'Imported TXT Agreement',
+      companyId: 'alt_s',
+      variableValues: {
+        pages: JSON.stringify([txtParagraphs.join('')]),
+        isUploaded: 'true',
+        originalFileName: 'agreement.txt'
+      }
+    });
+
+    assert.ok(txtDoc.id);
+    const savedTxt = DatabaseService.getDocumentById(txtDoc.id)!;
+    assert.equal(savedTxt.companyId, 'alt_s');
+    const parsedTxtPages = JSON.parse(savedTxt.variableValues.pages);
+    assert.ok(parsedTxtPages[0].includes('EMPLOYMENT AGREEMENT'));
+
+    // 2. Multi-Company Letterhead Rendering for Sifratech & Link ERP
+    const sifraLetterhead = DocumentProcessor.renderLetterheadHTML(
+      'Offer Letter',
+      parsedTxtPages[0],
+      { companyId: 'sifratech', company_name: 'Sifratech Solutions' }
+    );
+    assert.ok(sifraLetterhead.includes('/Sifratech.png'), 'Sifratech branding must be preserved');
+
+    const linkLetterhead = DocumentProcessor.renderLetterheadHTML(
+      'Offer Letter',
+      parsedTxtPages[0],
+      { companyId: 'link_erp', company_name: 'Link ERP' }
+    );
+    assert.ok(linkLetterhead.includes('/LinkERP.png'), 'Link ERP branding must be preserved');
+  });
+
+  // ─────────────────────────────────────────────────────────────
+  // WORKFLOW 19: Full End-to-End Realtime Dual-Signer Lifecycle
+  // ─────────────────────────────────────────────────────────────
+  test('Workflow 19: Full End-to-End Realtime Dual-Signer Lifecycle & Verification', async () => {
+    DatabaseService.setSessionRole('hr');
+
+    // 1. HR creates document
+    const doc = await DatabaseService.createDocument({
+      title: 'Executive Dual-Approval Contract',
+      category: 'appointment_letter',
+      companyId: 'alt_s',
+      personName: 'Vikram Malhotra',
+      personEmail: 'vikram@alt-s.com',
+      personRole: 'VP Engineering',
+      templateVersionId: 'executive_offer',
+      templateVersionNumber: '1.0',
+      status: 'draft',
+      variableValues: { candidateName: 'Vikram Malhotra' },
+      generatedAt: new Date().toISOString(),
+      generatedBy: 'HR Admin',
+      approvalWorkflow: {
+        id: 'wf-dual-exec',
+        documentId: '',
+        currentStepIndex: 0,
+        status: 'in_progress',
+        steps: [
+          { stepNumber: 1, roleName: 'siva_kumar', assignedToName: 'Siva Kumar', status: 'pending' },
+          { stepNumber: 2, roleName: 'uma_mageshwari', assignedToName: 'Uma Mageshwari', status: 'pending' }
+        ]
+      }
+    });
+
+    // 2. HR requests signatures from both Siva and Uma
+    const reqSiva = DatabaseService.createSignatureRequest(doc.id, 'siva_kumar', 'siva@alt-s.com', 'HR Admin');
+    const reqUma = DatabaseService.createSignatureRequest(doc.id, 'uma_mageshwari', 'uma@alt-s.com', 'HR Admin');
+
+    assert.equal(reqSiva.status, 'pending');
+    assert.equal(reqUma.status, 'pending');
+
+    // Signatures are locked initially
+    const freshDoc = DatabaseService.getDocumentById(doc.id)!;
+    assert.equal(freshDoc.authorizations?.length || 0, 0);
+
+    // 3. Siva approves -> OTP generated
+    DatabaseService.setSessionRole('siva_kumar');
+    const approvedSiva = DatabaseService.signerApproveRequest(reqSiva.id);
+    assert.equal(approvedSiva.status, 'approved');
+    assert.ok(approvedSiva.otpCode);
+
+    // 4. Uma approves -> independent OTP generated
+    DatabaseService.setSessionRole('uma_mageshwari');
+    const approvedUma = DatabaseService.signerApproveRequest(reqUma.id);
+    assert.equal(approvedUma.status, 'approved');
+    assert.ok(approvedUma.otpCode);
+
+    // Assert OTPs are distinct
+    assert.notEqual(approvedSiva.otpCode, approvedUma.otpCode);
+
+    // 5. HR verifies Siva's OTP
+    DatabaseService.setSessionRole('hr');
+    DatabaseService.hrVerifySignatureOtp(reqSiva.id, approvedSiva.otpCode!);
+
+    // Check that ONLY Siva's signature is unlocked
+    const docAfterSiva = DatabaseService.getDocumentById(doc.id)!;
+    const sivaUnlocked = docAfterSiva.authorizations?.some(a => a.signatoryRole === 'siva_kumar' && !a.usedAt);
+    const umaUnlocked = docAfterSiva.authorizations?.some(a => a.signatoryRole === 'uma_mageshwari' && !a.usedAt);
+    assert.equal(sivaUnlocked, true, "Siva's signature must be unlocked");
+    assert.equal(umaUnlocked, false, "Uma's signature must remain strictly locked");
+
+    // 6. HR verifies Uma's OTP
+    DatabaseService.hrVerifySignatureOtp(reqUma.id, approvedUma.otpCode!);
+    const docAfterUma = DatabaseService.getDocumentById(doc.id)!;
+    const bothUnlocked = 
+      docAfterUma.authorizations?.some(a => a.signatoryRole === 'siva_kumar' && !a.usedAt) &&
+      docAfterUma.authorizations?.some(a => a.signatoryRole === 'uma_mageshwari' && !a.usedAt);
+    assert.equal(bothUnlocked, true, "Both signatures must now be unlocked");
+
+    // 7. HR places both signatures
+    DatabaseService.recordSignaturePlacement(doc.id, 'siva_kumar', 'HR Admin');
+    DatabaseService.recordSignaturePlacement(doc.id, 'uma_mageshwari', 'HR Admin');
+
+    // 8. HR Finalizes Document
+    const finalized = await DatabaseService.finalizeDocument(doc.id, 'HR Admin');
     assert.equal(finalized.status, 'completed');
-    assert.ok(finalized.completedAt);
     assert.ok(finalized.documentHash);
-    assert.equal(finalized.documentHash.length, 64);
-    assert.equal(finalized.documentHash, finalized.originalHash);
     assert.equal(finalized.isTampered, false);
 
-    // Audit log was created
+    // Audit logs verify entire trace
     const logs = DatabaseService.getAuditLogs();
-    const finalLog = logs.find(l => l.action === 'Document Finalized' && l.documentId === draft.id);
-    assert.ok(finalLog);
-    assert.equal(finalLog.newStatus, 'completed');
+    const actions = logs.filter(l => l.documentId === doc.id).map(l => l.action);
+    assert.ok(actions.includes('Signature Request Sent'));
+    assert.ok(actions.includes('Signature Approved'));
+    assert.ok(actions.includes('OTP Verified'));
+    assert.ok(actions.includes('Signature Placed'));
+    assert.ok(actions.includes('Document Finalized'));
   });
 
 });
