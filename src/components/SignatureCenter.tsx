@@ -797,127 +797,134 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
         className="hidden"
       />
 
-      {/* ─── Logical Top Subheader Bar ─── */}
-      <div className="h-11 border-b border-[#ebecf0] px-5 flex items-center justify-between bg-white z-20 shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center space-x-2 border-r border-slate-200 pr-3">
-             <span className="text-[11px] font-bold text-slate-800">Signing Portal</span>
+      {/* ─── Enterprise Workspace Subheader Bar ─── */}
+      <div className="h-12 border-b border-slate-200 px-5 flex items-center justify-between bg-white z-20 shrink-0 shadow-2xs font-sans">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="flex items-center space-x-2 border-r border-slate-200 pr-3 shrink-0">
+            <span className="text-xs font-bold text-slate-800 tracking-tight">Signing Portal</span>
           </div>
           
-          <span className="text-[11px] text-[#6b778c] font-medium">
-            Human Resources / Documents & Signing
+          <span className="text-xs text-slate-400 font-medium hidden sm:inline">
+            HR &amp; Legal
           </span>
-          <span className="text-slate-300">/</span>
-          <span className="text-[13px] font-bold text-[#172b4d]">
+          <span className="text-slate-300 hidden sm:inline">/</span>
+          <span className="text-xs font-bold text-slate-900 truncate max-w-[240px] md:max-w-md">
             {hasUploadedDoc ? docName : (targetDoc?.title || 'Official Document')}
           </span>
 
-          {/* Status Badge */}
+          {/* WCAG AA Semantic Status Badge */}
           {(!targetDoc || targetDoc.status === 'draft') ? (
-            <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-300 flex items-center gap-1">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-700 border border-slate-300">
               <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
               Draft
             </span>
           ) : targetDoc.status === 'pending_approval' ? (
-            <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200 flex items-center gap-1">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-800 border border-amber-300">
               <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
               Signature Requested
             </span>
           ) : targetDoc.status === 'signature_authorized' ? (
-            <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-300">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
               Ready for Signing
             </span>
           ) : (
-            <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1">
-              <CheckCircle2 size={10} className="text-emerald-600" />
-              Signed &amp; Completed
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-300">
+              <CheckCircle2 size={12} className="text-emerald-600" />
+              Signed &amp; Sealed
             </span>
           )}
 
           {/* Last Saved Time Indicator */}
           {lastSavedTime && (
-            <span className="text-[11px] text-slate-500 font-medium flex items-center gap-1 ml-1" title="Last saved time">
-              <Clock size={11} className="text-slate-400" />
+            <span className="text-xs text-slate-400 font-medium hidden lg:flex items-center gap-1 ml-1" title="Last saved time">
+              <Clock size={12} className="text-slate-400" />
               {isDirty ? (
-                <span className="text-amber-600 font-semibold flex items-center gap-1">
+                <span className="text-amber-700 font-semibold flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-amber-500" /> Unsaved changes
                 </span>
               ) : (
                 <span className="text-slate-500">
-                  Last saved {lastSavedTime}
+                  Saved {lastSavedTime}
                 </span>
               )}
             </span>
           )}
         </div>
 
-        {/* Quick Toolbar Action Buttons */}
+        {/* 3-Tier Enterprise Action Buttons */}
         <div className="flex items-center gap-2">
           {currentRole === 'hr' && (
             <>
-              {/* Save Draft Button */}
+              {/* Secondary Button: Save Draft */}
               <button
+                type="button"
                 onClick={() => handleSaveDraft(false)}
                 disabled={isSaving}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-[11px] font-bold transition-all shadow-xs active:scale-95 disabled:opacity-60 cursor-pointer"
+                className="h-8 px-3 rounded-md border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold flex items-center gap-1.5 shadow-2xs active:scale-98 disabled:opacity-50 transition-all cursor-pointer"
                 title="Save current document state as a draft without requesting signatures"
               >
                 {isSaving ? (
-                  <RefreshCw size={12} className="animate-spin text-indigo-600" />
+                  <RefreshCw size={13} className="animate-spin text-indigo-600" />
                 ) : (
-                  <Bookmark size={12} className="text-slate-600" />
+                  <Bookmark size={13} className="text-slate-500" />
                 )}
-                <span>{isSaving ? 'Saving Draft...' : 'Save Draft'}</span>
+                <span>{isSaving ? 'Saving...' : 'Save Draft'}</span>
               </button>
 
-              {/* Request Signature Button */}
+              {/* Primary CTA: Request Signature */}
               <button
+                type="button"
                 onClick={handleOpenRequestSignature}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-brand-900 hover:bg-brand-800 text-white text-[11px] font-bold transition-all shadow-sm active:scale-95 cursor-pointer"
+                className="h-8 px-3.5 rounded-md bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold flex items-center gap-1.5 shadow-xs active:scale-98 transition-all cursor-pointer"
                 title="Send document for signatory approval"
               >
-                <Send size={12} />
+                <Send size={13} />
                 <span>Request Signature</span>
               </button>
             </>
           )}
 
+          {/* Secondary Button: Preview */}
           <button
+            type="button"
             onClick={() => setIsPreviewMode(!isPreviewMode)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-[12px] font-semibold transition-colors shadow-xs border ${
+            className={`h-8 px-3 rounded-md text-xs font-semibold flex items-center gap-1.5 shadow-2xs border transition-all cursor-pointer ${
               isPreviewMode 
-                ? 'bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-200' 
+                ? 'bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100' 
                 : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
             }`}
           >
-            <Eye size={14} />
+            <Eye size={13} />
             <span>{isPreviewMode ? 'Exit Preview' : 'Preview'}</span>
           </button>
 
           {targetDoc?.status === 'completed' && (
-            <span className="text-[11px] font-bold px-2.5 py-1 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-300 flex items-center gap-1">
-              <CheckCircle2 size={13} className="text-emerald-700" />
-              <span>Completed &amp; Sealed</span>
+            <span className="h-8 px-3 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-300 text-xs font-semibold flex items-center gap-1.5">
+              <CheckCircle2 size={13} className="text-emerald-600" />
+              <span>Cryptographically Sealed</span>
             </span>
           )}
 
           {currentRole === 'hr' && targetDoc?.status !== 'completed' && (targetDoc?.status === 'signed' || sigs.length > 0) && (
             <button
+              type="button"
               onClick={handleFinalize}
-              className="bg-brand-900 hover:bg-brand-800 text-white text-[12px] font-semibold px-3 py-1.5 rounded-md shadow-xs flex items-center gap-1.5 transition-colors"
+              className="h-8 px-3.5 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold rounded-md shadow-xs flex items-center gap-1.5 transition-all active:scale-98 cursor-pointer"
               title="Finalize document and generate cryptographic SHA-256 seal"
             >
               <CheckCircle2 size={14} />
-              <span>Finalize Document</span>
+              <span>Finalize &amp; Seal</span>
             </button>
           )}
 
+          {/* Secondary Button: Download PDF */}
           <button
+            type="button"
             onClick={handleDownload}
-            className="bg-slate-800 hover:bg-slate-700 text-white text-[12px] font-semibold px-3.5 py-1.5 rounded-md shadow-xs flex items-center gap-1.5 transition-colors"
+            className="h-8 px-3.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-md shadow-xs flex items-center gap-1.5 transition-all active:scale-98 cursor-pointer"
           >
-            <Download size={14} />
+            <Download size={13} />
             <span>Download PDF</span>
           </button>
         </div>
@@ -939,54 +946,80 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
 
       {/* ─── Request Signature Dialog ─── */}
       {showReqSigDialog && (currentDocId || targetDoc) && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-900/60 backdrop-blur-sm">
-          <div className="bg-white rounded-lg shadow-md w-full max-w-md overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
-              <div className="flex items-center gap-2">
-                <Send size={18} className="text-indigo-600" />
-                <h3 className="font-bold text-slate-800">Request Signature</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs font-sans animate-in fade-in duration-150">
+          <div className="bg-white rounded-xl shadow-2xl border border-slate-200/90 w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-150">
+            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/75">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-indigo-50 border border-indigo-200/60 flex items-center justify-center text-indigo-700">
+                  <Send size={16} />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-slate-900 text-sm">Request Signatures</h3>
+                  <p className="text-[11px] text-slate-500">Dispatch document for executive OTP verification</p>
+                </div>
               </div>
-              <button onClick={() => setShowReqSigDialog(false)} className="p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded-full transition-colors">
-                <X size={18} />
+              <button
+                type="button"
+                onClick={() => setShowReqSigDialog(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-200/70 rounded-md transition-colors"
+              >
+                <X size={16} />
               </button>
             </div>
 
             {reqSigSent ? (
               <div className="p-6 text-center space-y-4">
-                <CheckCircle2 size={48} className="mx-auto text-emerald-500" />
+                <div className="w-12 h-12 mx-auto rounded-full bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 shadow-2xs">
+                  <CheckCircle2 size={28} />
+                </div>
                 <div>
-                  <p className="font-bold text-brand-900 text-lg">Request Sent!</p>
-                  <p className="text-sm text-slate-500 mt-1">
-                    {reqSigSelection === 'siva_kumar' ? 'Siva Kumar' :
-                     reqSigSelection === 'uma_mageshwari' ? 'Uma Mageshwari' : 'Both signers'}
-                    {' '}will see the request in their Signature Requests portal.
+                  <p className="font-semibold text-slate-900 text-base">Signature Request Dispatched</p>
+                  <p className="text-xs text-slate-600 mt-1 max-w-xs mx-auto">
+                    {reqSigSelection === 'siva_kumar' ? 'Siva Kumar (MD)' :
+                     reqSigSelection === 'uma_mageshwari' ? 'Uma Mageshwari (Director)' : 'Both executive signatories'}
+                    {' '}can now review and generate an authorization OTP in their portal.
                   </p>
                 </div>
-                <p className="text-xs text-slate-400 bg-slate-50 rounded-lg p-3">
-                  Once they approve, they'll generate an OTP. Ask them to share it with you, then enter it in the <strong>Signature Requests</strong> tab to unlock the signature.
-                </p>
-                <button onClick={() => setShowReqSigDialog(false)} className="w-full py-2.5 rounded-lg bg-brand-900 text-white font-bold text-sm">
-                  Close
+                <div className="text-left text-xs text-slate-600 bg-slate-50 rounded-lg p-3 border border-slate-200">
+                  <span className="font-semibold text-slate-800">Next Step:</span> When the signatory approves and shares the single-use OTP, open the <strong className="text-indigo-700 font-semibold">Signature Requests</strong> tab to verify and place the signature.
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowReqSigDialog(false)}
+                  className="w-full py-2.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs transition-colors shadow-2xs"
+                >
+                  Close &amp; Continue
                 </button>
               </div>
             ) : (
-              <div className="p-6 space-y-5">
+              <div className="p-6 space-y-4">
                 <div>
-                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Who should sign this document?</p>
+                  <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-2.5">Select Signatories</p>
                   <div className="space-y-2">
                     {[
                       { val: 'siva_kumar', label: 'Siva Kumar', subtitle: 'Managing Director' },
                       { val: 'uma_mageshwari', label: 'Uma Mageshwari', subtitle: 'Director' },
                       { val: 'both', label: 'Both Signatories', subtitle: 'Siva Kumar & Uma Mageshwari' }
                     ].map(opt => (
-                      <label key={opt.val} className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
-                        reqSigSelection === opt.val ? 'border-indigo-400 bg-indigo-50' : 'border-slate-200 hover:border-slate-300'
-                      }`}>
-                        <input type="radio" name="signer" value={opt.val} checked={reqSigSelection === opt.val}
-                          onChange={() => setReqSigSelection(opt.val as any)} className="accent-indigo-600" />
+                      <label
+                        key={opt.val}
+                        className={`flex items-center gap-3 p-3 rounded-lg border transition-all cursor-pointer ${
+                          reqSigSelection === opt.val
+                            ? 'border-indigo-600 bg-indigo-50/60 ring-1 ring-indigo-600/20'
+                            : 'border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50/50'
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="signer"
+                          value={opt.val}
+                          checked={reqSigSelection === opt.val}
+                          onChange={() => setReqSigSelection(opt.val as any)}
+                          className="w-4 h-4 text-indigo-600 border-slate-300 focus:ring-indigo-600"
+                        />
                         <div>
-                          <p className="font-bold text-sm text-slate-800">{opt.label}</p>
-                          <p className="text-xs text-slate-500">{opt.subtitle}</p>
+                          <p className="font-semibold text-xs text-slate-900">{opt.label}</p>
+                          <p className="text-[11px] text-slate-500">{opt.subtitle}</p>
                         </div>
                       </label>
                     ))}
@@ -995,22 +1028,31 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
 
                 {(reqSigSelection === 'siva_kumar' || reqSigSelection === 'both') && (
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">Siva Kumar's Email</label>
-                    <input type="email" value={reqSivaEmail} onChange={e => setReqSivaEmail(e.target.value)}
+                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">Siva Kumar's Email</label>
+                    <input
+                      type="email"
+                      value={reqSivaEmail}
+                      onChange={e => setReqSivaEmail(e.target.value)}
                       placeholder="siva@example.com"
-                      className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-400" />
+                      className="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-800 placeholder-slate-400 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-600/20 focus:border-indigo-600"
+                    />
                   </div>
                 )}
                 {(reqSigSelection === 'uma_mageshwari' || reqSigSelection === 'both') && (
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">Uma Mageshwari's Email</label>
-                    <input type="email" value={reqUmaEmail} onChange={e => setReqUmaEmail(e.target.value)}
+                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">Uma Mageshwari's Email</label>
+                    <input
+                      type="email"
+                      value={reqUmaEmail}
+                      onChange={e => setReqUmaEmail(e.target.value)}
                       placeholder="uma@example.com"
-                      className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-400" />
+                      className="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-800 placeholder-slate-400 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-600/20 focus:border-indigo-600"
+                    />
                   </div>
                 )}
 
                 <button
+                  type="button"
                   onClick={() => {
                     try {
                       const docIdToRequest = currentDocId || targetDoc?.id;
@@ -1031,10 +1073,10 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
                       alert('Error: ' + (e as any).message);
                     }
                   }}
-                  className="w-full py-3 rounded-lg bg-brand-900 hover:bg-brand-800 text-white font-bold text-sm flex items-center justify-center gap-2 transition-colors"
+                  className="w-full py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-semibold text-xs flex items-center justify-center gap-2 transition-colors shadow-2xs cursor-pointer"
                 >
-                  <Send size={15} />
-                  Send Signature Request
+                  <Send size={14} />
+                  Send Request
                 </button>
               </div>
             )}
@@ -1045,9 +1087,9 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
       {/* ─── FULLY SCROLLABLE DOCUMENT CANVAS ─── */}
       <div
         id="sig-scroll-container"
-        className="flex-1 overflow-y-auto overflow-x-auto flex flex-col items-center py-6 px-4 min-h-0 bg-[#f4f5f7] custom-scrollbar"
+        className="flex-1 overflow-y-auto overflow-x-auto flex flex-col items-center py-8 px-4 min-h-0 bg-slate-100/90 custom-scrollbar"
         style={{
-          backgroundImage: 'radial-gradient(#dfe1e6 1.2px, transparent 1.2px)',
+          backgroundImage: 'radial-gradient(#cbd5e1 1.2px, transparent 1.2px)',
           backgroundSize: '24px 24px',
         }}
       >
@@ -1057,7 +1099,7 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
           onMouseMove={onCanvasMove}
           onMouseUp={onCanvasUp}
           onMouseLeave={onCanvasUp}
-          className="relative bg-white shadow-[0_8px_30px_rgba(9,30,66,0.12)] border border-[#dfe1e6] rounded-xs shrink-0 mb-32 transition-transform duration-150"
+          className="relative bg-white shadow-[0_4px_24px_rgba(15,23,42,0.08)] border border-slate-200/90 rounded-sm shrink-0 mb-32 transition-transform duration-150"
           style={{
             width: '794px',
             minHeight: '1050px',
@@ -1067,8 +1109,8 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
         >
           {docLoading && (
             <div className="absolute inset-0 bg-white/85 backdrop-blur-xs flex flex-col items-center justify-center z-30">
-              <div className="w-9 h-9 border-3 border-brand-900 border-t-transparent rounded-full animate-spin mb-2.5" />
-              <p className="text-xs font-bold text-[#172b4d]">Rendering document pages...</p>
+              <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin mb-2.5" />
+              <p className="text-xs font-semibold text-slate-800">Rendering document pages...</p>
             </div>
           )}
 
@@ -1191,59 +1233,63 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
 
         {/* ── Signature Adjustment Inspector (Opens beside selected sig) ── */}
         {selectedSig && !isPreviewMode && (
-          <div className="fixed top-28 right-6 w-68 bg-white/95 backdrop-blur-md rounded-lg shadow-[0_8px_30px_rgba(9,30,66,0.18)] border border-[#dfe1e6] p-3.5 z-40 space-y-3">
-            <div className="flex items-center justify-between border-b border-[#ebecf0] pb-2">
-              <div className="flex items-center gap-1.5">
-                <Settings size={14} className="text-brand-900" />
-                <span className="font-bold text-[12.5px] text-[#172b4d]">Signature Adjustments</span>
+          <div className="fixed top-28 right-6 w-72 bg-white/95 backdrop-blur-md rounded-xl shadow-xl border border-slate-200/90 p-4 z-40 space-y-3.5 font-sans animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+              <div className="flex items-center gap-2">
+                <Settings size={15} className="text-slate-700" />
+                <span className="font-semibold text-xs text-slate-900">Signature Inspector</span>
               </div>
               <button
+                type="button"
                 onClick={() => resetSig(selectedSig)}
-                className="p-1 hover:bg-[#ebecf0] rounded text-[#6b778c] hover:text-[#172b4d]"
+                className="p-1 hover:bg-slate-100 rounded text-slate-500 hover:text-slate-800 transition-colors"
                 title="Reset effects"
               >
-                <RefreshCw size={12} />
+                <RefreshCw size={13} />
               </button>
             </div>
 
             {/* Quick Actions */}
             <div className="grid grid-cols-2 gap-2">
               <button
+                type="button"
                 onClick={() => handleRemoveBg(selectedSig)}
                 disabled={bgRemoving === selectedSig.id}
-                className={`flex items-center justify-center gap-1 py-1.5 px-2 rounded text-[11px] font-semibold border transition-all ${
+                className={`flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg text-xs font-semibold border transition-all ${
                   selectedSig.bgRemoved
                     ? 'bg-amber-50 border-amber-300 text-amber-800'
-                    : 'bg-[#fafbfc] border-[#dfe1e6] hover:bg-[#ebecf0] text-[#172b4d]'
+                    : 'bg-white border-slate-300 hover:bg-slate-50 text-slate-700'
                 }`}
               >
                 {bgRemoving === selectedSig.id ? (
-                  <div className="w-3 h-3 border-2 border-brand-900 border-t-transparent rounded-full animate-spin" />
+                  <div className="w-3 h-3 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
                 ) : (
-                  <Eraser size={12} className="text-brand-900" />
+                  <Eraser size={13} className="text-slate-600" />
                 )}
                 <span>{selectedSig.bgRemoved ? 'Restore BG' : 'Remove BG'}</span>
               </button>
 
               <button
+                type="button"
                 onClick={() => setCropModal({ sigId: selectedSig.id, src: selectedSig.src })}
-                className="flex items-center justify-center gap-1 py-1.5 px-2 rounded text-[11px] font-semibold border border-[#dfe1e6] bg-[#fafbfc] hover:bg-[#ebecf0] text-[#172b4d]"
+                className="flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg text-xs font-semibold border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 transition-colors"
               >
-                <Crop size={12} className="text-brand-900" />
+                <Crop size={13} className="text-slate-600" />
                 <span>Crop Area</span>
               </button>
             </div>
 
             {/* Rotation */}
             <div>
-              <div className="flex justify-between text-[11px] font-semibold text-[#42526e] mb-1">
+              <div className="flex justify-between text-[11px] font-semibold text-slate-600 mb-1">
                 <span>Rotation</span>
-                <span>{selectedSig.rotation}°</span>
+                <span className="font-mono text-slate-800">{selectedSig.rotation}°</span>
               </div>
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-2">
                 <button
+                  type="button"
                   onClick={() => updateSig(selectedSig.id, { rotation: selectedSig.rotation - 90 })}
-                  className="p-1 border border-[#dfe1e6] rounded hover:bg-[#ebecf0] text-[#42526e]"
+                  className="p-1 border border-slate-300 rounded hover:bg-slate-50 text-slate-600"
                   title="Rotate -90°"
                 >
                   <RotateCcw size={12} />
@@ -1254,11 +1300,12 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
                   max={180}
                   value={selectedSig.rotation}
                   onChange={e => updateSig(selectedSig.id, { rotation: Number(e.target.value) })}
-                  className="flex-1 h-1.5 accent-[#0052cc] cursor-pointer"
+                  className="flex-1 h-1.5 accent-indigo-600 cursor-pointer"
                 />
                 <button
+                  type="button"
                   onClick={() => updateSig(selectedSig.id, { rotation: selectedSig.rotation + 90 })}
-                  className="p-1 border border-[#dfe1e6] rounded hover:bg-[#ebecf0] text-[#42526e]"
+                  className="p-1 border border-slate-300 rounded hover:bg-slate-50 text-slate-600"
                   title="Rotate +90°"
                 >
                   <RotateCw size={12} />
@@ -1268,9 +1315,9 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
 
             {/* Brightness */}
             <div>
-              <div className="flex justify-between text-[11px] font-semibold text-[#42526e] mb-0.5">
+              <div className="flex justify-between text-[11px] font-semibold text-slate-600 mb-1">
                 <span className="flex items-center gap-1"><Sun size={11} /> Brightness</span>
-                <span>{selectedSig.brightness}%</span>
+                <span className="font-mono text-slate-800">{selectedSig.brightness}%</span>
               </div>
               <input
                 type="range"
@@ -1278,15 +1325,15 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
                 max={300}
                 value={selectedSig.brightness}
                 onChange={e => updateSig(selectedSig.id, { brightness: Number(e.target.value) })}
-                className="w-full h-1.5 accent-[#0052cc] cursor-pointer"
+                className="w-full h-1.5 accent-indigo-600 cursor-pointer"
               />
             </div>
 
             {/* Contrast */}
             <div>
-              <div className="flex justify-between text-[11px] font-semibold text-[#42526e] mb-0.5">
+              <div className="flex justify-between text-[11px] font-semibold text-slate-600 mb-1">
                 <span className="flex items-center gap-1"><Contrast size={11} /> Contrast</span>
-                <span>{selectedSig.contrast}%</span>
+                <span className="font-mono text-slate-800">{selectedSig.contrast}%</span>
               </div>
               <input
                 type="range"
@@ -1294,15 +1341,15 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
                 max={300}
                 value={selectedSig.contrast}
                 onChange={e => updateSig(selectedSig.id, { contrast: Number(e.target.value) })}
-                className="w-full h-1.5 accent-[#0052cc] cursor-pointer"
+                className="w-full h-1.5 accent-indigo-600 cursor-pointer"
               />
             </div>
 
             {/* Opacity */}
             <div>
-              <div className="flex justify-between text-[11px] font-semibold text-[#42526e] mb-0.5">
-                <span className="flex items-center gap-1"><Layers size={11} /> Ink Blend (Opacity)</span>
-                <span>{selectedSig.opacity}%</span>
+              <div className="flex justify-between text-[11px] font-semibold text-slate-600 mb-1">
+                <span className="flex items-center gap-1"><Layers size={11} /> Ink Opacity</span>
+                <span className="font-mono text-slate-800">{selectedSig.opacity}%</span>
               </div>
               <input
                 type="range"
@@ -1310,7 +1357,7 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
                 max={100}
                 value={selectedSig.opacity}
                 onChange={e => updateSig(selectedSig.id, { opacity: Number(e.target.value) })}
-                className="w-full h-1.5 accent-[#0052cc] cursor-pointer"
+                className="w-full h-1.5 accent-indigo-600 cursor-pointer"
               />
             </div>
           </div>
@@ -1318,104 +1365,115 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
       </div>
 
       {/* ─── Floating Whiteboard Action Palette (Fixed Center Bottom) ─── */}
-      <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-30 flex items-center">
-        <div className="bg-white rounded-lg shadow-[0_6px_24px_rgba(9,30,66,0.16)] border border-[#dfe1e6] px-3 py-1.5 flex items-center gap-2.5">
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-30 flex items-center font-sans">
+        <div className="bg-white/95 backdrop-blur-md rounded-xl shadow-[0_8px_30px_rgba(15,23,42,0.12)] border border-slate-200/90 px-3.5 py-2 flex items-center gap-2">
           {/* Hand Move Tool */}
           <button
+            type="button"
             onClick={() => setActiveTool('select')}
             className={`p-1.5 rounded-lg transition-colors ${
-              activeTool === 'select' ? 'bg-[#091e42] text-white' : 'text-[#42526e] hover:bg-[#ebecf0]'
+              activeTool === 'select' ? 'bg-slate-900 text-white shadow-2xs' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
             }`}
-            title="Move Tool"
+            title="Pan / Select Tool"
           >
             <Move size={15} />
           </button>
 
           <>
-              <div className="h-5 w-px bg-[#dfe1e6]" />
+            <div className="h-5 w-px bg-slate-200" />
 
-              {/* Signatures */}
-              {currentRole === 'hr' && (
-                <div className="flex items-center gap-2 mr-2">
-                  <span className="font-bold text-[10px] text-emerald-700 uppercase tracking-wider bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">Signature Available</span>
-                </div>
-              )}
+            {/* Signature Status Legend */}
+            {currentRole === 'hr' && (
+              <span className="font-semibold text-[10px] text-slate-500 uppercase tracking-wider px-1">Signatures:</span>
+            )}
 
-              {/* Show Siva signature if approved by Siva (HR sees it locked if not approved) */}
-              {currentRole === 'hr' && (
-                <button
-                  onClick={() => {
-                    const isAuth = targetDoc?.authorizations?.some(a => a.signatoryRole === 'siva_kumar' && !a.usedAt);
-                    if (!isAuth) return;
-                    addSig('/sign1.jpg', 'signature', 'siva_kumar');
-                  }}
-                  disabled={!(targetDoc?.authorizations?.some(a => a.signatoryRole === 'siva_kumar' && !a.usedAt))}
-                  className={`flex items-center gap-1 px-2.5 py-1 rounded-md font-semibold text-[11.5px] transition-colors ${
-                    !(targetDoc?.authorizations?.some(a => a.signatoryRole === 'siva_kumar' && !a.usedAt))
-                      ? 'text-slate-400 bg-slate-50 cursor-not-allowed border border-slate-200' 
-                      : 'text-[#172b4d] hover:bg-[#ebecf0]'
-                  }`}
-                  title={!(targetDoc?.authorizations?.some(a => a.signatoryRole === 'siva_kumar' && !a.usedAt)) ? "Locked: Awaiting Siva Kumar's OTP authorization" : "Place Siva Kumar Signature"}
-                >
-                  {!(targetDoc?.authorizations?.some(a => a.signatoryRole === 'siva_kumar' && !a.usedAt)) ? <Lock size={12} className="text-rose-500" /> : <Pen size={14} className="text-brand-900" />}
-                  <span>Siva Kumar</span>
-                </button>
-              )}
-
-              {/* Show Uma signature if approved by Uma (HR sees it locked if not approved) */}
-              {currentRole === 'hr' && (
-                <button
-                  onClick={() => {
-                    const isAuth = targetDoc?.authorizations?.some(a => a.signatoryRole === 'uma_mageshwari' && !a.usedAt);
-                    if (!isAuth) return;
-                    addSig('/sign2.jpg', 'signature', 'uma_mageshwari');
-                  }}
-                  disabled={!(targetDoc?.authorizations?.some(a => a.signatoryRole === 'uma_mageshwari' && !a.usedAt))}
-                  className={`flex items-center gap-1 px-2.5 py-1 rounded-md font-semibold text-[11.5px] transition-colors ${
-                    !(targetDoc?.authorizations?.some(a => a.signatoryRole === 'uma_mageshwari' && !a.usedAt))
-                      ? 'text-slate-400 bg-slate-50 cursor-not-allowed border border-slate-200' 
-                      : 'text-[#172b4d] hover:bg-[#ebecf0]'
-                  }`}
-                  title={!(targetDoc?.authorizations?.some(a => a.signatoryRole === 'uma_mageshwari' && !a.usedAt)) ? "Locked: Awaiting Uma Mageshwari's OTP authorization" : "Place Uma Mageshwari Signature"}
-                >
-                  {!(targetDoc?.authorizations?.some(a => a.signatoryRole === 'uma_mageshwari' && !a.usedAt)) ? <Lock size={12} className="text-rose-500" /> : <Pen size={14} className="text-brand-900" />}
-                  <span>Uma Mageshwari</span>
-                </button>
-              )}
-
-              {/* Corporate Seal */}
-              {currentRole === 'hr' && (
-                <button
-                  onClick={addOfficialStamp}
-                  className="flex items-center gap-1 px-2.5 py-1 text-[#172b4d] hover:bg-[#ebecf0] rounded-lg font-semibold text-[11.5px] transition-colors"
-                  title="Stamp Corporate Seal"
-                >
-                  <Stamp size={14} className="text-purple-600" />
-                  <span>Corporate Seal</span>
-                </button>
-              )}
-
-              <div className="h-5 w-px bg-[#dfe1e6]" />
-
-              {/* Finish & Save */}
+            {/* Siva Kumar signature button (HR places after OTP authorization) */}
+            {currentRole === 'hr' && (
               <button
-                onClick={handleDownload}
-                className="bg-brand-900 hover:bg-brand-800 active:bg-[#0747a6] text-white font-bold text-[11.5px] px-3.5 py-1.5 rounded-lg flex items-center gap-1.5 shadow-sm active:scale-95 transition-all"
-                title="Finish & Save Document"
+                type="button"
+                onClick={() => {
+                  const isAuth = targetDoc?.authorizations?.some(a => a.signatoryRole === 'siva_kumar' && !a.usedAt);
+                  if (!isAuth) return;
+                  addSig('/sign1.jpg', 'signature', 'siva_kumar');
+                }}
+                disabled={!(targetDoc?.authorizations?.some(a => a.signatoryRole === 'siva_kumar' && !a.usedAt))}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold text-xs transition-all ${
+                  !(targetDoc?.authorizations?.some(a => a.signatoryRole === 'siva_kumar' && !a.usedAt))
+                    ? 'text-slate-400 bg-slate-100/70 cursor-not-allowed border border-slate-200/80 opacity-60' 
+                    : 'bg-emerald-50 text-emerald-900 hover:bg-emerald-100 border border-emerald-300 shadow-2xs cursor-pointer'
+                }`}
+                title={!(targetDoc?.authorizations?.some(a => a.signatoryRole === 'siva_kumar' && !a.usedAt)) ? "Locked: Awaiting Siva Kumar's OTP authorization" : "Place Siva Kumar Signature"}
               >
-                <Download size={14} />
-                <span>Finish & Save</span>
+                {!(targetDoc?.authorizations?.some(a => a.signatoryRole === 'siva_kumar' && !a.usedAt)) ? (
+                  <Lock size={12} className="text-rose-500" />
+                ) : (
+                  <CheckCircle2 size={13} className="text-emerald-700" />
+                )}
+                <span>Siva Kumar (MD)</span>
               </button>
-            </>
-          
+            )}
+
+            {/* Uma Mageshwari signature button (HR places after OTP authorization) */}
+            {currentRole === 'hr' && (
+              <button
+                type="button"
+                onClick={() => {
+                  const isAuth = targetDoc?.authorizations?.some(a => a.signatoryRole === 'uma_mageshwari' && !a.usedAt);
+                  if (!isAuth) return;
+                  addSig('/sign2.jpg', 'signature', 'uma_mageshwari');
+                }}
+                disabled={!(targetDoc?.authorizations?.some(a => a.signatoryRole === 'uma_mageshwari' && !a.usedAt))}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold text-xs transition-all ${
+                  !(targetDoc?.authorizations?.some(a => a.signatoryRole === 'uma_mageshwari' && !a.usedAt))
+                    ? 'text-slate-400 bg-slate-100/70 cursor-not-allowed border border-slate-200/80 opacity-60' 
+                    : 'bg-emerald-50 text-emerald-900 hover:bg-emerald-100 border border-emerald-300 shadow-2xs cursor-pointer'
+                }`}
+                title={!(targetDoc?.authorizations?.some(a => a.signatoryRole === 'uma_mageshwari' && !a.usedAt)) ? "Locked: Awaiting Uma Mageshwari's OTP authorization" : "Place Uma Mageshwari Signature"}
+              >
+                {!(targetDoc?.authorizations?.some(a => a.signatoryRole === 'uma_mageshwari' && !a.usedAt)) ? (
+                  <Lock size={12} className="text-rose-500" />
+                ) : (
+                  <CheckCircle2 size={13} className="text-emerald-700" />
+                )}
+                <span>Uma Mageshwari</span>
+              </button>
+            )}
+
+            {/* Corporate Seal */}
+            {currentRole === 'hr' && (
+              <button
+                type="button"
+                onClick={addOfficialStamp}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-slate-800 bg-white hover:bg-slate-50 border border-slate-300 rounded-lg font-semibold text-xs transition-all shadow-2xs cursor-pointer"
+                title="Stamp Corporate Seal"
+              >
+                <Stamp size={13} className="text-indigo-600" />
+                <span>Corporate Seal</span>
+              </button>
+            )}
+
+            <div className="h-5 w-px bg-slate-200" />
+
+            {/* Finish & Save */}
+            <button
+              type="button"
+              onClick={handleDownload}
+              className="bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-semibold text-xs px-3.5 py-1.5 rounded-lg flex items-center gap-1.5 shadow-xs active:scale-98 transition-all cursor-pointer"
+              title="Finish & Save Document"
+            >
+              <Download size={13} />
+              <span>Finish &amp; Download</span>
+            </button>
+          </>
         </div>
       </div>
 
       {/* ─── Bottom Right Zoom Controls ─── */}
-      <div className="fixed bottom-5 right-5 z-30 flex flex-col items-center bg-white rounded-lg shadow-[0_4px_16px_rgba(9,30,66,0.12)] border border-[#dfe1e6] overflow-hidden text-[#42526e]">
+      <div className="fixed bottom-6 right-6 z-30 flex flex-col items-center bg-white/95 backdrop-blur-md rounded-lg shadow-md border border-slate-200 overflow-hidden text-slate-600 font-sans">
         <button
+          type="button"
           onClick={() => setZoom(100)}
-          className="p-1.5 hover:bg-[#ebecf0] transition-colors border-b border-[#ebecf0]"
+          className="p-1.5 hover:bg-slate-100 transition-colors border-b border-slate-200 text-slate-700"
           title="Fit to frame (100%)"
         >
           <Maximize2 size={13} />

@@ -57,7 +57,7 @@ export const DocumentUploader: React.FC<{ onSwitch: () => void; onSaveSuccess: (
           'width:794px;min-height:1050px;background:white;padding:60px 72px;box-sizing:border-box;font-family:Calibri,Arial,sans-serif;font-size:14px;line-height:1.6;position:fixed;left:-9999px;top:0;';
         div.innerHTML = text
           .split(/\r?\n/)
-          .map(line => line.trim() === '' ? '<p style="margin-bottom:8px;"><br/></p>' : `<p style="margin-bottom:12px;line-height:1.6;">${line.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</p>`)
+          .map(line => line.trim() === '' ? '<p style="margin-bottom:8px;"><br/></p>' : `<p style="margin-bottom:12px;line-height:1.6;">${line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>`)
           .join('');
         document.body.appendChild(div);
         const c = await html2canvas(div, { scale: 2, useCORS: true });
@@ -216,11 +216,10 @@ export const DocumentUploader: React.FC<{ onSwitch: () => void; onSaveSuccess: (
                     key={c.id}
                     type="button"
                     onClick={() => setSelectedCompanyId(c.id)}
-                    className={`flex items-center gap-2 p-2.5 rounded-lg border text-left transition-all ${
-                      selectedCompanyId === c.id
+                    className={`flex items-center gap-2 p-2.5 rounded-lg border text-left transition-all ${selectedCompanyId === c.id
                         ? 'border-indigo-600 bg-indigo-50/50 ring-2 ring-indigo-500/20'
                         : 'border-slate-200 hover:border-slate-300 bg-white'
-                    }`}
+                      }`}
                   >
                     <img src={c.logoUrl} alt={c.name} className="h-6 object-contain" />
                     <div>

@@ -72,14 +72,14 @@ export const DraftsManager: React.FC<DraftsManagerProps> = ({
   return (
     <div className="space-y-6 animate-fade-in pb-16">
       {/* Header section */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-lg border border-slate-200 shadow-xs">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-xl border border-slate-200 shadow-2xs font-sans">
         <div>
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-md bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-700 shadow-xs">
+            <div className="w-9 h-9 rounded-lg bg-indigo-50 border border-indigo-200/60 flex items-center justify-center text-indigo-700 shadow-2xs">
               <FileEdit size={20} />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-slate-900 tracking-tight">HR Document Drafts</h1>
+              <h1 className="text-lg font-semibold text-slate-900 tracking-tight">HR Document Drafts</h1>
               <p className="text-xs text-slate-500 mt-0.5">
                 Work-in-progress documents saved safely. Continue editing anytime or send for signatures when ready.
               </p>
@@ -88,8 +88,9 @@ export const DraftsManager: React.FC<DraftsManagerProps> = ({
         </div>
 
         <button
+          type="button"
           onClick={onOpenCreate}
-          className="flex items-center gap-2 px-4 py-2 bg-brand-900 hover:bg-brand-800 active:bg-brand-950 text-white text-xs font-bold rounded-md shadow-xs transition-colors shrink-0"
+          className="flex items-center gap-2 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-xs font-semibold rounded-lg shadow-2xs transition-colors shrink-0 cursor-pointer"
         >
           <Plus size={15} />
           <span>New Document</span>
@@ -97,48 +98,48 @@ export const DraftsManager: React.FC<DraftsManagerProps> = ({
       </div>
 
       {/* Summary KPI Badges */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div className="bg-white p-4 rounded-md border border-slate-200 shadow-xs">
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Saved Drafts</p>
-          <div className="flex items-baseline gap-2 mt-1">
-            <span className="text-2xl font-extrabold text-slate-900">{allDrafts.length}</span>
-            <span className="text-[10px] text-amber-700 font-bold px-1.5 py-0.5 rounded bg-amber-50">In Progress</span>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 font-sans">
+        <div className="bg-white p-4 rounded-xl border border-slate-200/90 shadow-2xs">
+          <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Total Saved Drafts</p>
+          <div className="flex items-baseline gap-2 mt-1.5">
+            <span className="text-2xl font-bold text-slate-900 tabular-nums">{allDrafts.length}</span>
+            <span className="text-[10px] text-amber-800 font-semibold px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200">In Progress</span>
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-md border border-slate-200 shadow-xs">
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">ALT-S Technology</p>
-          <div className="flex items-baseline gap-2 mt-1">
-            <span className="text-2xl font-extrabold text-slate-900">
+        <div className="bg-white p-4 rounded-xl border border-slate-200/90 shadow-2xs">
+          <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">ALT-S Technology</p>
+          <div className="flex items-baseline gap-2 mt-1.5">
+            <span className="text-2xl font-bold text-slate-900 tabular-nums">
               {allDrafts.filter(d => d.companyId === 'alt_s').length}
             </span>
-            <span className="text-[10px] text-slate-500 font-medium">Draft docs</span>
+            <span className="text-[11px] text-slate-500">Draft docs</span>
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-md border border-slate-200 shadow-xs">
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Uploaded Files</p>
-          <div className="flex items-baseline gap-2 mt-1">
-            <span className="text-2xl font-extrabold text-slate-900">
+        <div className="bg-white p-4 rounded-xl border border-slate-200/90 shadow-2xs">
+          <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Uploaded Files</p>
+          <div className="flex items-baseline gap-2 mt-1.5">
+            <span className="text-2xl font-bold text-slate-900 tabular-nums">
               {allDrafts.filter(d => d.variableValues?.isUploaded === 'true' || d.variableValues?.uploadedImages).length}
             </span>
-            <span className="text-[10px] text-slate-500 font-medium">PDF / Word</span>
+            <span className="text-[11px] text-slate-500">DOCX / PDF / TXT</span>
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-md border border-slate-200 shadow-xs">
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Workflow Protection</p>
-          <div className="flex items-baseline gap-1.5 mt-1">
-            <span className="text-xs font-bold text-emerald-600 flex items-center gap-1">
-              <CheckCircle size={14} /> 100% Isolated
+        <div className="bg-white p-4 rounded-xl border border-slate-200/90 shadow-2xs">
+          <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Workflow Protection</p>
+          <div className="flex items-baseline gap-1.5 mt-1.5">
+            <span className="text-xs font-semibold text-emerald-700 flex items-center gap-1">
+              <CheckCircle size={14} className="text-emerald-600" /> Isolated Draft
             </span>
           </div>
-          <p className="text-[10px] text-slate-400 mt-0.5">No premature notifications or OTPs</p>
+          <p className="text-[11px] text-slate-400 mt-0.5">Zero premature notifications</p>
         </div>
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="bg-white p-3.5 rounded-md border border-slate-200 flex flex-wrap items-center justify-between gap-3 shadow-xs">
+      <div className="bg-white p-3 rounded-xl border border-slate-200/90 flex flex-wrap items-center justify-between gap-3 shadow-2xs font-sans">
         <div className="flex items-center gap-2 flex-1 min-w-[240px]">
           <div className="relative w-full max-w-sm">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -147,7 +148,7 @@ export const DraftsManager: React.FC<DraftsManagerProps> = ({
               placeholder="Search drafts by title, recipient, or doc number..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-800 placeholder-slate-400 focus:bg-white focus:border-[#4c9aff] focus:ring-1 focus:ring-[#4c9aff] outline-none transition-all"
+              className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-800 placeholder-slate-400 focus:bg-white focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20 outline-none transition-all"
             />
           </div>
         </div>
@@ -157,7 +158,7 @@ export const DraftsManager: React.FC<DraftsManagerProps> = ({
           <select
             value={selectedCompanyFilter}
             onChange={(e) => setSelectedCompanyFilter(e.target.value)}
-            className="text-xs font-semibold bg-slate-50 border border-slate-200 text-slate-700 rounded-lg px-2.5 py-1.5 outline-none hover:border-slate-300 cursor-pointer"
+            className="text-xs font-semibold bg-slate-50 border border-slate-200 text-slate-700 rounded-lg px-2.5 py-1.5 outline-none hover:border-slate-300 focus:border-indigo-600 cursor-pointer"
           >
             <option value="all">All Companies</option>
             {COMPANIES.map(c => (
@@ -169,28 +170,29 @@ export const DraftsManager: React.FC<DraftsManagerProps> = ({
 
       {/* Drafts List */}
       {filteredDrafts.length === 0 ? (
-        <div className="bg-white rounded-lg border border-slate-200 p-12 text-center shadow-xs">
-          <div className="w-14 h-14 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400 mx-auto mb-3">
-            <FileEdit size={26} />
+        <div className="bg-white rounded-xl border border-slate-200/90 p-12 text-center shadow-2xs font-sans">
+          <div className="w-12 h-12 rounded-full bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-400 mx-auto mb-3">
+            <FileEdit size={22} />
           </div>
-          <h3 className="font-bold text-slate-700 text-base">
+          <h3 className="font-semibold text-slate-800 text-sm">
             {allDrafts.length === 0 ? 'No drafts saved yet' : 'No matching drafts found'}
           </h3>
-          <p className="text-xs text-slate-500 max-w-md mx-auto mt-1 mb-5">
+          <p className="text-xs text-slate-500 max-w-md mx-auto mt-1 mb-5 leading-relaxed">
             {allDrafts.length === 0
-              ? 'When HR creates or uploads a document and clicks "Save Draft", it will stay safely stored here so you can leave and continue anytime.'
+              ? 'When HR creates or uploads a document and clicks "Save Draft", it stays safely stored in the database so you can resume at any time.'
               : 'Try clearing your search terms or company filter to see all saved drafts.'}
           </p>
           <button
+            type="button"
             onClick={onOpenCreate}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-brand-900 hover:bg-brand-800 text-white text-xs font-bold rounded-md transition-colors"
+            className="inline-flex items-center gap-2 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow-2xs transition-colors cursor-pointer"
           >
             <Plus size={14} />
             <span>Create or Upload a Document</span>
           </button>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-2.5 font-sans">
           {filteredDrafts.map(doc => {
             const company = getCompanyInfo(doc.companyId);
             const isUploaded = doc.variableValues?.isUploaded === 'true' || !!doc.variableValues?.uploadedImages;
@@ -198,37 +200,37 @@ export const DraftsManager: React.FC<DraftsManagerProps> = ({
             return (
               <div
                 key={doc.id}
-                className="bg-white rounded-md border border-slate-200 hover:border-indigo-300 p-4 transition-all shadow-xs hover:shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4"
+                className="bg-white rounded-xl border border-slate-200/90 hover:border-slate-300 hover:shadow-sm p-4.5 transition-all shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-4"
               >
                 {/* Left: Document info */}
                 <div className="flex items-start gap-3.5 min-w-0">
-                  <div className={`w-10 h-10 rounded-md flex items-center justify-center shrink-0 border ${
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 border ${
                     isUploaded
-                      ? 'bg-amber-50 text-amber-700 border-amber-200'
-                      : 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                      ? 'bg-amber-50/80 text-amber-700 border-amber-200'
+                      : 'bg-indigo-50/80 text-indigo-700 border-indigo-200'
                   }`}>
-                    {isUploaded ? <UploadCloud size={20} /> : <FileText size={20} />}
+                    {isUploaded ? <UploadCloud size={19} /> : <FileText size={19} />}
                   </div>
 
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2 mb-1">
-                      <span className="font-mono text-[11px] font-bold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100">
+                      <span className="font-mono text-[11px] font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 tabular-nums">
                         {doc.documentNumber}
                       </span>
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200 flex items-center gap-1">
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-50 text-amber-800 border border-amber-200 flex items-center gap-1">
                         <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
                         Draft
                       </span>
-                      <span className="text-[11px] font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded flex items-center gap-1">
+                      <span className="text-[11px] font-medium text-slate-600 bg-slate-50 px-2 py-0.5 rounded border border-slate-200 flex items-center gap-1">
                         <Building2 size={11} className="text-slate-400" />
                         {company.name}
                       </span>
-                      <span className="text-[10px] text-slate-400 font-medium">
+                      <span className="text-[11px] text-slate-400">
                         {isUploaded ? '• Uploaded File' : '• Letterhead Template'}
                       </span>
                     </div>
 
-                    <h3 className="font-bold text-sm text-slate-900 truncate">
+                    <h3 className="font-semibold text-xs text-slate-900 truncate">
                       {doc.title}
                     </h3>
 
@@ -239,7 +241,7 @@ export const DraftsManager: React.FC<DraftsManagerProps> = ({
                           <span>{doc.personName} {doc.personRole ? `(${doc.personRole})` : ''}</span>
                         </span>
                       )}
-                      <span className="flex items-center gap-1 text-slate-400">
+                      <span className="flex items-center gap-1 text-slate-400 text-[11px]">
                         <Clock size={12} />
                         <span>Saved {formatRelativeTime(doc.updatedAt || doc.createdAt)}</span>
                       </span>
@@ -250,19 +252,21 @@ export const DraftsManager: React.FC<DraftsManagerProps> = ({
                 {/* Right: Actions */}
                 <div className="flex items-center gap-2 self-end md:self-center shrink-0">
                   <button
+                    type="button"
                     onClick={() => setDeleteConfirmDoc(doc)}
-                    className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                    className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
                     title="Discard Draft"
                   >
                     <Trash2 size={15} />
                   </button>
 
                   <button
+                    type="button"
                     onClick={() => onContinueEditing(doc)}
-                    className="flex items-center gap-2 px-4 py-2 rounded-md bg-brand-900 hover:bg-brand-800 active:bg-brand-950 text-white text-xs font-bold transition-all shadow-xs"
+                    className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-white hover:bg-slate-50 active:bg-slate-100 text-slate-800 border border-slate-300 text-xs font-semibold transition-all shadow-2xs hover:shadow-xs cursor-pointer"
                   >
                     <span>Continue Editing</span>
-                    <ArrowRight size={14} />
+                    <ArrowRight size={13} className="text-slate-500" />
                   </button>
                 </div>
               </div>
