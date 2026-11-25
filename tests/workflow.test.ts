@@ -6,6 +6,12 @@
 
 import { test, describe, before, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
+import dns from 'node:dns';
+
+// Ensure DNS resolution uses public nameservers if local ISP router is unconfigured
+try {
+  dns.setServers(['8.8.8.8', '1.1.1.1']);
+} catch (e) {}
 
 // Setup environment polyfills for Node runtime
 const storage = new Map<string, string>();
