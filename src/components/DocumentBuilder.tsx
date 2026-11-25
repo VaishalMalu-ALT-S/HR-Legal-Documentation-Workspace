@@ -145,6 +145,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
   const [showHeadpad, setShowHeadpad] = useState<boolean>(true);
   const [showFooter, setShowFooter] = useState<boolean>(true);
   const [headpadOnAllPages, _setHeadpadOnAllPages] = useState<boolean>(false);
+  const [useExactLetterheadBg, setUseExactLetterheadBg] = useState<boolean>(true);
 
   // Formatting state
   const [fontFamily, setFontFamily] = useState<string>("'Calibri', Arial, sans-serif");
@@ -1464,16 +1465,30 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
                 ref={el => { pageContainerRefs.current[pageIdx] = el; }}
                 style={{
                   transform: `scale(${zoomLevel / 100})`,
-                  
                   fontFamily: fontFamily
                 }}
-                className="w-[794px] min-h-[1123px] bg-white shadow-2xl border border-slate-300 relative flex flex-col justify-between p-[44px] box-border text-[#1e293b]"
+                className={`w-[794px] min-h-[1123px] bg-white shadow-2xl border border-slate-300 relative flex flex-col justify-between box-border text-[#1e293b] overflow-hidden ${
+                  useExactLetterheadBg && pageIdx === 0 && selectedCompany.letterheadUrl
+                    ? 'p-0'
+                    : 'p-[44px]'
+                }`}
               >
-                {/* ── Top Header / Headpad ── */}
-                {showHeadpad && (
-                  <div>
+                {/* ── EXACT 1:1 LETTERHEAD BACKGROUND (From Letterhead.pdf) ── */}
+                {useExactLetterheadBg && pageIdx === 0 && selectedCompany.letterheadUrl ? (
+                  <div className="absolute inset-0 w-full h-full pointer-events-none select-none z-0">
+                    <img
+                      src={selectedCompany.letterheadUrl}
+                      alt={`${selectedCompany.name} Official Letterhead`}
+                      className="w-full h-full object-fill block"
+                    />
+                  </div>
+                ) : null}
+
+                {/* ── Top Header / Headpad (Only when NOT using exact letterhead image) ── */}
+                {showHeadpad && (!useExactLetterheadBg || pageIdx > 0 || !selectedCompany.letterheadUrl) && (
+                  <div className="relative z-10">
                     {pageIdx === 0 || headpadOnAllPages ? (
-                      /* Page 1: Full Official ALT-S Headpad */
+                      /* Page 1: Full Official Headpad fallback */
                       <div className="mb-8 w-full flex items-end">
                         {/* Left: Company Logo */}
                         <img
@@ -1520,12 +1535,16 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
                   suppressContentEditableWarning
                   onInput={() => handlePageInput(pageIdx)}
                   style={{ fontSize: fontSize, "--theme-color": selectedCompany.themeColor } as any}
-                  className="flex-1 outline-none text-[#1e293b] leading-normal font-normal min-h-[700px] cursor-text"
+                  className={`flex-1 outline-none text-[#1e293b] leading-normal font-normal min-h-[700px] cursor-text relative z-10 ${
+                    useExactLetterheadBg && pageIdx === 0 && selectedCompany.letterheadUrl
+                      ? 'pt-[140px] pb-[105px] px-[50px]'
+                      : ''
+                  }`}
                 />
 
-                {/* ── Official ALT-S Footer ── */}
-                {showFooter && (
-                  <div className="mt-6 pt-3 border-t border-slate-300 select-none">
+                {/* ── Official Footer (Only when NOT using exact letterhead image) ── */}
+                {showFooter && (!useExactLetterheadBg || pageIdx > 0 || !selectedCompany.letterheadUrl) && (
+                  <div className="mt-6 pt-3 border-t border-slate-300 select-none relative z-10">
                     <div className="flex items-center justify-between text-[9px] text-slate-600 pb-1">
                       <p>Web: <span className="text-blue-700 font-semibold">{selectedCompany.website}</span> | Email: <span className="text-blue-700 font-semibold">{selectedCompany.email}</span></p>
                       <p className="font-bold text-slate-800">Page {pageIdx + 1} of {pages.length}</p>

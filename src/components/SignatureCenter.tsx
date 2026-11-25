@@ -1125,57 +1125,72 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
               />
             </div>
           ) : (
-            <div className="w-full h-full p-12 text-[#172b4d] flex flex-col justify-between select-text">
-              <div>
-                {/* Official Letterhead Header */}
-                <div className="mb-4">
-                  <div className="flex items-end mb-8 w-full relative">
-                    {/* Company Logo */}
-                    <img
-                      src={selectedCompany.logoUrl}
-                      alt={selectedCompany.name}
-                      className="max-h-[75px] max-w-[260px] object-contain shrink-0"
-                      onError={(e) => {
-                        (e.target as HTMLElement).style.display = 'none';
-                      }}
-                    />
+            <div className="w-full h-full relative select-text overflow-hidden">
+              {/* Exact Letterhead Background from Letterhead.pdf */}
+              {selectedCompany.letterheadUrl && (
+                <div className="absolute inset-0 w-full h-full pointer-events-none select-none z-0">
+                  <img
+                    src={selectedCompany.letterheadUrl}
+                    alt={`${selectedCompany.name} Letterhead`}
+                    className="w-full h-full object-fill block"
+                  />
+                </div>
+              )}
 
-                    {/* Right Side: Address & Thick Bar */}
-                    <div className="flex flex-col flex-1 max-h-[75px] justify-between ml-2">
-                      <div className="flex justify-end w-full">
-                        <div className="border-l-[1.5px] border-slate-400 pl-2.5 py-0.5 text-[10px] leading-[1.3] text-slate-800 text-left font-sans">
-                          <p className="font-bold text-[11px] uppercase text-brand-900 border-b-[1px] border-slate-400 pb-[3px] mb-[3px]">{selectedCompany.headerText}</p>
-                          <div className="whitespace-pre-line text-slate-800">{selectedCompany.address}</div>
+              <div className={`w-full h-full flex flex-col justify-between relative z-10 ${selectedCompany.letterheadUrl ? 'pt-[140px] pb-[105px] px-[50px]' : 'p-12 text-[#172b4d]'}`}>
+                <div>
+                  {/* Fallback Letterhead Header if no letterheadUrl */}
+                  {!selectedCompany.letterheadUrl && (
+                    <div className="mb-4">
+                      <div className="flex items-end mb-8 w-full relative">
+                        {/* Company Logo */}
+                        <img
+                          src={selectedCompany.logoUrl}
+                          alt={selectedCompany.name}
+                          className="max-h-[75px] max-w-[260px] object-contain shrink-0"
+                          onError={(e) => {
+                            (e.target as HTMLElement).style.display = 'none';
+                          }}
+                        />
+
+                        {/* Right Side: Address & Thick Bar */}
+                        <div className="flex flex-col flex-1 max-h-[75px] justify-between ml-2">
+                          <div className="flex justify-end w-full">
+                            <div className="border-l-[1.5px] border-slate-400 pl-2.5 py-0.5 text-[10px] leading-[1.3] text-slate-800 text-left font-sans">
+                              <p className="font-bold text-[11px] uppercase text-brand-900 border-b-[1px] border-slate-400 pb-[3px] mb-[3px]">{selectedCompany.headerText}</p>
+                              <div className="whitespace-pre-line text-slate-800">{selectedCompany.address}</div>
+                            </div>
+                          </div>
+                          
+                          {/* Solid Dark Separator Bar matching PDF theme */}
+                          <div className="h-[14px] w-full rounded-l-3xl mb-[4px]" style={{ backgroundColor: selectedCompany.themeColor }}></div>
                         </div>
                       </div>
-                      
-                      {/* Solid Dark Separator Bar matching PDF theme */}
-                      <div className="h-[14px] w-full rounded-l-3xl mb-[4px]" style={{ backgroundColor: selectedCompany.themeColor }}></div>
+                    </div>
+                  )}
+
+                  {/* Body Content */}
+                  {renderTemplateBody()}
+                </div>
+
+                {/* Signature Acceptance Box */}
+                <div className="pt-8 pb-4 flex justify-between items-end border-t border-slate-200 mt-8">
+                  <div>
+                    <p className="font-bold text-[12px] text-slate-800">{approverName}</p>
+                    <p className="text-[11px] text-slate-500">{approverTitle} - {selectedCompany.name}</p>
+                    <div className="mt-1.5 text-[9.5px] text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 inline-flex items-center gap-1">
+                      <CheckCircle2 size={11} />
+                      <span>Verified Corporate Seal</span>
                     </div>
                   </div>
-                </div>
 
-                {/* Body Content */}
-                {renderTemplateBody()}
-              </div>
-
-              {/* Signature Acceptance Box */}
-              <div className="pt-16 pb-6 flex justify-between items-end border-t border-slate-200 mt-12">
-                <div>
-                  <p className="font-bold text-[12px] text-slate-800">{approverName}</p>
-                  <p className="text-[11px] text-slate-500">{approverTitle} - {selectedCompany.name}</p>
-                  <div className="mt-1.5 text-[9.5px] text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 inline-flex items-center gap-1">
-                    <CheckCircle2 size={11} />
-                    <span>Verified Corporate Seal</span>
+                  <div className="w-64 text-right">
+                    <div className="h-16 border-b border-dashed border-slate-400 flex items-center justify-center text-slate-400 text-xs italic">
+                      {sigs.length === 0 ? 'Drag signature into this box' : ''}
+                    </div>
+                    <p className="font-bold text-[12px] text-slate-800 mt-1">Candidate Signature & Acceptance</p>
+                    <p className="text-[10px] text-slate-500">Sign & date above</p>
                   </div>
-                </div>
-
-                <div className="w-64 text-right">
-                  <div className="h-16 border-b border-dashed border-slate-400 flex items-center justify-center text-slate-400 text-xs italic">
-                    {sigs.length === 0 ? 'Drag signature into this box' : ''}
-                  </div>
-                  <p className="font-bold text-[12px] text-slate-800 mt-1">Candidate Signature & Acceptance</p>
-                  <p className="text-[10px] text-slate-500">Sign & date above</p>
                 </div>
               </div>
             </div>
