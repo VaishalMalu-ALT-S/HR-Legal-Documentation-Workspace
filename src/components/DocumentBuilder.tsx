@@ -1475,40 +1475,12 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
                     {pageIdx === 0 || headpadOnAllPages ? (
                       /* Page 1: Official Company Header from Letterhead.pdf */
                       <div className="w-full">
-                        {selectedCompany.id === 'link_erp' ? (
-                          <div className="w-full border-b border-[#0b1f3b]/30">
-                            <div className="flex items-center justify-between px-10 pt-8 pb-3">
-                              <img src="/LinkERP.png" alt="Link ERP" className="h-[46px] object-contain" />
-                              <div className="text-right text-[10px] text-slate-800 leading-tight font-sans border-l-2 border-[#0b1f3b] pl-3">
-                                <p className="font-bold text-[11px] text-[#0b1f3b] uppercase">LINK ERP TECHNOLOGIES L.L.C</p>
-                                <p className="text-[9.5px] text-slate-700 font-medium">HILAL SALIM BIN TARRAF BUILDING - 76,<br/>BUR DUBAI, AL WASL - M8, DUBAI</p>
-                              </div>
-                            </div>
-                            <div className="h-[3px] bg-[#0b1f3b] w-full"></div>
-                          </div>
-                        ) : selectedCompany.id === 'sifratech' ? (
-                          <div className="w-full border-b border-[#042750]/30">
-                            <div className="flex items-center justify-between px-10 pt-8 pb-3">
-                              <img src="/Sifratech.png" alt="Sifratech" className="h-[46px] object-contain" />
-                              <div className="text-right text-[10px] text-slate-800 leading-tight font-sans border-l-2 border-[#042750] pl-3">
-                                <p className="font-bold text-[11px] text-[#042750] uppercase">SIFRATECH CONSULTING LLC</p>
-                                <p className="text-[9.5px] text-slate-700 font-medium">AL MAMZAR BUILDING, PLOT NO. 232-0,<br/>DUBAI, UNITED ARAB EMIRATES.</p>
-                              </div>
-                            </div>
-                            <div className="h-[3px] bg-[#042750] w-full"></div>
-                          </div>
-                        ) : (
-                          <div className="w-full border-b border-[#3e4348]/30">
-                            <div className="flex items-center justify-between px-10 pt-8 pb-3">
-                              <img src="/altslogo.png" alt="ALT-S" className="h-[46px] object-contain" />
-                              <div className="text-right text-[10px] text-slate-800 leading-tight font-sans border-l-2 border-[#3e4348] pl-3">
-                                <p className="font-bold text-[11px] text-slate-900 uppercase">ALT-S TECHNOLOGY PRIVATE LIMITED</p>
-                                <p className="text-[9.5px] text-slate-700 font-medium">No. 4, Mullai Street, Thiruvalluvar Nagar, Kamarajnagar,<br/>Poonamallee, Tiruvallur, Tamil Nadu - 600071, INDIA</p>
-                              </div>
-                            </div>
-                            <div className="h-[3px] bg-[#3e4348] w-full"></div>
-                          </div>
-                        )}
+                        <img
+                          src={selectedCompany.headerImageUrl || selectedCompany.letterheadUrl}
+                          alt={`${selectedCompany.name} Official Letterhead Header`}
+                          className="w-full h-auto block select-none pointer-events-none"
+                          draggable={false}
+                        />
                       </div>
                     ) : (
                       /* Subsequent Pages: Neat Header Band */
@@ -1539,66 +1511,12 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
                 {/* ── Official Letterhead Footer Matching Letterhead.pdf ── */}
                 {showFooter && (
                   <div className="select-none mt-auto w-full shrink-0">
-                    {selectedCompany.id === 'link_erp' ? (
-                      /* Exact Link ERP Footer from Letterhead.pdf Page 1 */
-                      <div className="w-full">
-                        <div className="bg-[#0b1f3b] text-white py-1.5 px-6 text-[10px] flex items-center justify-center gap-6">
-                          <span className="flex items-center gap-1.5">
-                            <span className="text-[11px]">☎</span>
-                            <span className="font-sans font-medium">{selectedCompany.phone}</span>
-                          </span>
-                          <span className="flex items-center gap-1.5">
-                            <span className="text-[11px]">✈</span>
-                            <span className="font-sans font-medium">{selectedCompany.website}</span>
-                          </span>
-                        </div>
-                        <div className="bg-[#245288] text-white py-2 px-6 text-[10px] tracking-wide font-sans font-medium flex items-center justify-center gap-8">
-                          <span>TR No: {selectedCompany.gstin}</span>
-                          <span>CR No:{selectedCompany.cin}</span>
-                        </div>
-                      </div>
-                    ) : selectedCompany.id === 'sifratech' ? (
-                      /* Exact Sifratech Footer from Letterhead.pdf Page 2 */
-                      <div className="w-full">
-                        <div className="bg-[#042750] text-white py-1.5 px-6 text-[10px] flex items-center justify-center gap-6">
-                          <span className="flex items-center gap-1.5">
-                            <span className="text-[11px]">☎</span>
-                            <span className="font-sans font-medium">{selectedCompany.phone}</span>
-                          </span>
-                          <span className="flex items-center gap-1.5">
-                            <span className="text-[11px]">✈</span>
-                            <span className="font-sans font-medium">{selectedCompany.website}</span>
-                          </span>
-                        </div>
-                        <div className="bg-[#214f88] text-white py-2 px-6 text-[10px] tracking-wide font-sans font-medium flex items-center justify-center gap-8">
-                          <span>CR No: {selectedCompany.cin}</span>
-                          <span>TRN: {selectedCompany.gstin}</span>
-                        </div>
-                      </div>
-                    ) : (
-                      /* Exact ALT-S Footer from Letterhead.pdf Page 3 */
-                      <div className="w-full">
-                        <div className="bg-[#3e4348] text-white py-1.5 px-6 text-[9.5px] flex items-center justify-center gap-8">
-                          <span className="flex items-center gap-1.5">
-                            <span className="text-[11px]">☎</span>
-                            <span>{selectedCompany.phone}</span>
-                          </span>
-                          <span className="flex items-center gap-1.5">
-                            <span className="text-[11px]">✈</span>
-                            <span>{selectedCompany.email}</span>
-                          </span>
-                          <span className="flex items-center gap-1.5">
-                            <span className="text-[11px]">🌐</span>
-                            <span>{selectedCompany.website}</span>
-                          </span>
-                        </div>
-                        <div className="bg-[#78c8cb] text-slate-900 py-2 px-6 text-[9.5px] font-sans font-semibold flex items-center justify-center gap-4">
-                          <span>CIN: {selectedCompany.cin}</span>
-                          <span>|</span>
-                          <span>GSTIN - {selectedCompany.gstin}</span>
-                        </div>
-                      </div>
-                    )}
+                    <img
+                      src={selectedCompany.footerImageUrl}
+                      alt={`${selectedCompany.name} Official Letterhead Footer`}
+                      className="w-full h-auto block select-none pointer-events-none"
+                      draggable={false}
+                    />
                   </div>
                 )}
 

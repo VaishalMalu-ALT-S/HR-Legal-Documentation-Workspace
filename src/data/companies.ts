@@ -3,6 +3,8 @@ export interface CompanyBrand {
   name: string;
   logoUrl: string;
   letterheadUrl?: string;
+  headerImageUrl: string;
+  footerImageUrl: string;
   headerText: string;
   footerText: string;
   themeColor: string;
@@ -20,6 +22,8 @@ export const COMPANIES: CompanyBrand[] = [
     name: 'ALT-S Technology Private Limited',
     logoUrl: '/altslogo.png',
     letterheadUrl: '/alts_letterhead.jpg',
+    headerImageUrl: '/alts_header.jpg',
+    footerImageUrl: '/alts_footer.jpg',
     headerText: 'ALT-S TECHNOLOGY PRIVATE LIMITED',
     footerText: 'CIN: U62099TN2023PTC163053 | GSTIN: 33AAZCA2708F1ZN',
     themeColor: '#0a3161',
@@ -35,6 +39,8 @@ export const COMPANIES: CompanyBrand[] = [
     name: 'Link ERP Technologies L.L.C',
     logoUrl: '/LinkERP.png',
     letterheadUrl: '/linkerp_letterhead.jpg',
+    headerImageUrl: '/linkerp_header.jpg',
+    footerImageUrl: '/linkerp_footer.jpg',
     headerText: 'LINK ERP TECHNOLOGIES L.L.C',
     footerText: 'TR No: 105272498400003  CR No: 105272498400001',
     themeColor: '#0a1e38',
@@ -50,6 +56,8 @@ export const COMPANIES: CompanyBrand[] = [
     name: 'Sifratech Consulting LLC',
     logoUrl: '/Sifratech.png',
     letterheadUrl: '/sifratech_letterhead.jpg',
+    headerImageUrl: '/sifratech_header.jpg',
+    footerImageUrl: '/sifratech_footer.jpg',
     headerText: 'SIFRATECH CONSULTING LLC',
     footerText: 'CR No: 105310106700001  TRN: 105310106700003',
     themeColor: '#042750',
