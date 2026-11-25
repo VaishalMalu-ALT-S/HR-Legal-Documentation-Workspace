@@ -1470,7 +1470,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
                 className={`w-[794px] min-h-[1123px] bg-white shadow-2xl border border-slate-300 relative flex flex-col justify-between box-border text-[#1e293b] overflow-hidden ${
                   useExactLetterheadBg && pageIdx === 0 && selectedCompany.letterheadUrl
                     ? 'p-0'
-                    : 'p-[44px]'
+                    : 'pt-[36px] px-[44px] pb-0'
                 }`}
               >
                 {/* ── EXACT 1:1 LETTERHEAD BACKGROUND (From Letterhead.pdf) ── */}
@@ -1486,10 +1486,10 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
 
                 {/* ── Top Header / Headpad (Only when NOT using exact letterhead image) ── */}
                 {showHeadpad && (!useExactLetterheadBg || pageIdx > 0 || !selectedCompany.letterheadUrl) && (
-                  <div className="relative z-10">
+                  <div className="relative z-10 mb-4">
                     {pageIdx === 0 || headpadOnAllPages ? (
                       /* Page 1: Full Official Headpad fallback */
-                      <div className="mb-8 w-full flex items-end">
+                      <div className="mb-4 w-full flex items-end">
                         {/* Left: Company Logo */}
                         <img
                           src={selectedCompany.logoUrl}
@@ -1514,7 +1514,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
                       </div>
                     ) : (
                       /* Subsequent Pages: Neat Header Band */
-                      <div className="mb-4 pb-2 border-b border-slate-300 flex items-center justify-between text-[10px] text-slate-500">
+                      <div className="pb-2 border-b border-slate-300 flex items-center justify-between text-[10px] text-slate-500">
                         <div className="flex items-center space-x-2">
                           <img src={selectedCompany.logoUrl} alt={selectedCompany.name} className="h-[20px] object-contain" />
                           <span className="font-semibold text-slate-700">{documentTitle}</span>
@@ -1538,25 +1538,73 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
                   className={`flex-1 outline-none text-[#1e293b] leading-normal font-normal min-h-[700px] cursor-text relative z-10 ${
                     useExactLetterheadBg && pageIdx === 0 && selectedCompany.letterheadUrl
                       ? 'pt-[140px] pb-[105px] px-[50px]'
-                      : ''
+                      : 'pb-6'
                   }`}
                 />
 
-                {/* ── Official Footer (Only when NOT using exact letterhead image) ── */}
+                {/* ── Official Letterhead Footer Matching Letterhead.pdf ── */}
                 {showFooter && (!useExactLetterheadBg || pageIdx > 0 || !selectedCompany.letterheadUrl) && (
-                  <div className="mt-6 pt-3 border-t border-slate-300 select-none relative z-10">
-                    <div className="flex items-center justify-between text-[9px] text-slate-600 pb-1">
-                      <p>Web: <span className="text-blue-700 font-semibold">{selectedCompany.website}</span> | Email: <span className="text-blue-700 font-semibold">{selectedCompany.email}</span></p>
-                      <p className="font-bold text-slate-800">Page {pageIdx + 1} of {pages.length}</p>
-                      <p>Phone: {selectedCompany.phone}</p>
-                    </div>
-
-                    {/* Official Corporate Identification & Tax Registration Bar */}
-                    <div className="text-white px-3 py-1.5 text-[8.5px] flex items-center justify-between rounded-sm mt-1" style={{ backgroundColor: selectedCompany.themeColor }}>
-                      <span>{selectedCompany.id === 'alt_s' ? 'CIN: ' : 'CR: '}<strong className="font-mono text-cyan-200">{selectedCompany.cin}</strong></span>
-                      <span className="font-semibold tracking-wide">{selectedCompany.headerText.toUpperCase()}</span>
-                      <span>{selectedCompany.id === 'alt_s' ? 'GSTIN: ' : 'TRN: '}<strong className="font-mono text-cyan-200">{selectedCompany.gstin}</strong></span>
-                    </div>
+                  <div className="select-none relative z-10 mt-auto w-full -mx-[44px] shrink-0" style={{ width: 'calc(100% + 88px)' }}>
+                    {selectedCompany.id === 'link_erp' ? (
+                      /* Exact Link ERP Footer from Letterhead.pdf Page 1 */
+                      <div className="w-full">
+                        <div className="bg-[#0b1f3b] text-white py-1 px-6 text-[10px] flex items-center justify-center gap-6">
+                          <span className="flex items-center gap-1.5">
+                            <span className="text-[11px]">☎</span>
+                            <span className="font-sans font-medium">{selectedCompany.phone}</span>
+                          </span>
+                          <span className="flex items-center gap-1.5">
+                            <span className="text-[11px]">✈</span>
+                            <span className="font-sans font-medium">{selectedCompany.website}</span>
+                          </span>
+                        </div>
+                        <div className="bg-[#245288] text-white py-1.5 px-6 text-[10px] tracking-wide font-sans font-medium flex items-center justify-center gap-8">
+                          <span>TR No: {selectedCompany.gstin}</span>
+                          <span>CR No:{selectedCompany.cin}</span>
+                        </div>
+                      </div>
+                    ) : selectedCompany.id === 'sifratech' ? (
+                      /* Exact Sifratech Footer from Letterhead.pdf Page 2 */
+                      <div className="w-full">
+                        <div className="bg-[#042750] text-white py-1 px-6 text-[10px] flex items-center justify-center gap-6">
+                          <span className="flex items-center gap-1.5">
+                            <span className="text-[11px]">☎</span>
+                            <span className="font-sans font-medium">{selectedCompany.phone}</span>
+                          </span>
+                          <span className="flex items-center gap-1.5">
+                            <span className="text-[11px]">✈</span>
+                            <span className="font-sans font-medium">{selectedCompany.website}</span>
+                          </span>
+                        </div>
+                        <div className="bg-[#214f88] text-white py-1.5 px-6 text-[10px] tracking-wide font-sans font-medium flex items-center justify-center gap-8">
+                          <span>CR No: {selectedCompany.cin}</span>
+                          <span>TRN: {selectedCompany.gstin}</span>
+                        </div>
+                      </div>
+                    ) : (
+                      /* Exact ALT-S Footer from Letterhead.pdf Page 3 */
+                      <div className="w-full">
+                        <div className="bg-[#3e4348] text-white py-1 px-6 text-[9.5px] flex items-center justify-center gap-8">
+                          <span className="flex items-center gap-1.5">
+                            <span className="text-[11px]">☎</span>
+                            <span>{selectedCompany.phone}</span>
+                          </span>
+                          <span className="flex items-center gap-1.5">
+                            <span className="text-[11px]">✈</span>
+                            <span>{selectedCompany.email}</span>
+                          </span>
+                          <span className="flex items-center gap-1.5">
+                            <span className="text-[11px]">🌐</span>
+                            <span>{selectedCompany.website}</span>
+                          </span>
+                        </div>
+                        <div className="bg-[#78c8cb] text-slate-900 py-1.5 px-6 text-[9.5px] font-sans font-semibold flex items-center justify-center gap-4">
+                          <span>CIN: {selectedCompany.cin}</span>
+                          <span>|</span>
+                          <span>GSTIN - {selectedCompany.gstin}</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 
