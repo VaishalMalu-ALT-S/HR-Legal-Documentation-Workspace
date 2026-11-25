@@ -70,210 +70,220 @@ export const DraftsManager: React.FC<DraftsManagerProps> = ({
   };
 
   return (
-    <div className="space-y-6 animate-fade-in pb-16">
-      {/* Header section */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-xl border border-slate-200 shadow-2xs font-sans">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-lg bg-indigo-50 border border-indigo-200/60 flex items-center justify-center text-indigo-700 shadow-2xs">
-              <FileEdit size={20} />
+    <div className="space-y-6 animate-fade-in pb-16 font-sans">
+      {/* Bento Grid Row 1: KPI Stats (Matching Growly Overview Cards) */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {/* Card 1: Total Saved Drafts (Highlight Blue Card like reference Growly card) */}
+        <div className="bg-[#1E6FD9] text-white p-6 rounded-3xl shadow-sm relative overflow-hidden flex flex-col justify-between min-h-[140px]">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-white/80">Total Saved Drafts</span>
+            <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center text-white">
+              <FileEdit size={14} />
             </div>
+          </div>
+          <div className="mt-4 flex items-baseline justify-between">
             <div>
-              <h1 className="text-lg font-semibold text-slate-900 tracking-tight">HR Document Drafts</h1>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Work-in-progress documents saved safely. Continue editing anytime or send for signatures when ready.
-              </p>
+              <span className="text-4xl font-extrabold tracking-tight tabular-nums">{allDrafts.length}</span>
+              <p className="text-xs text-white/80 mt-1">In-progress legal documents</p>
+            </div>
+            <span className="text-[11px] font-semibold bg-white text-[#1E6FD9] px-2.5 py-1 rounded-full shadow-2xs">
+              Live Vault
+            </span>
+          </div>
+        </div>
+
+        {/* Card 2: ALT-S Corporate Docs (Clean White Bento Card) */}
+        <div className="bg-white p-6 rounded-3xl border border-[#E8EDF3] shadow-[0_1px_3px_rgba(15,23,42,0.03)] flex flex-col justify-between min-h-[140px]">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">ALT-S Technology</span>
+            <div className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-slate-600">
+              <Building2 size={14} />
             </div>
           </div>
-        </div>
-
-        <button
-          type="button"
-          onClick={onOpenCreate}
-          className="flex items-center gap-2 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-xs font-semibold rounded-lg shadow-2xs transition-colors shrink-0 cursor-pointer"
-        >
-          <Plus size={15} />
-          <span>New Document</span>
-        </button>
-      </div>
-
-      {/* Summary KPI Badges */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 font-sans">
-        <div className="bg-white p-4 rounded-xl border border-slate-200/90 shadow-2xs">
-          <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Total Saved Drafts</p>
-          <div className="flex items-baseline gap-2 mt-1.5">
-            <span className="text-2xl font-bold text-slate-900 tabular-nums">{allDrafts.length}</span>
-            <span className="text-[10px] text-amber-800 font-semibold px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200">In Progress</span>
-          </div>
-        </div>
-
-        <div className="bg-white p-4 rounded-xl border border-slate-200/90 shadow-2xs">
-          <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">ALT-S Technology</p>
-          <div className="flex items-baseline gap-2 mt-1.5">
-            <span className="text-2xl font-bold text-slate-900 tabular-nums">
+          <div className="mt-4">
+            <span className="text-3xl font-extrabold text-[#0F172A] tabular-nums">
               {allDrafts.filter(d => d.companyId === 'alt_s').length}
             </span>
-            <span className="text-[11px] text-slate-500">Draft docs</span>
+            <p className="text-xs text-slate-400 mt-1">Direct corporate templates</p>
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-slate-200/90 shadow-2xs">
-          <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Uploaded Files</p>
-          <div className="flex items-baseline gap-2 mt-1.5">
-            <span className="text-2xl font-bold text-slate-900 tabular-nums">
+        {/* Card 3: Uploaded Files (Clean White Bento Card) */}
+        <div className="bg-white p-6 rounded-3xl border border-[#E8EDF3] shadow-[0_1px_3px_rgba(15,23,42,0.03)] flex flex-col justify-between min-h-[140px]">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Imported Documents</span>
+            <div className="w-7 h-7 rounded-full bg-amber-50 flex items-center justify-center text-amber-600">
+              <UploadCloud size={14} />
+            </div>
+          </div>
+          <div className="mt-4">
+            <span className="text-3xl font-extrabold text-[#0F172A] tabular-nums">
               {allDrafts.filter(d => d.variableValues?.isUploaded === 'true' || d.variableValues?.uploadedImages).length}
             </span>
-            <span className="text-[11px] text-slate-500">DOCX / PDF / TXT</span>
+            <p className="text-xs text-slate-400 mt-1">DOCX, PDF &amp; TXT imported</p>
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-slate-200/90 shadow-2xs">
-          <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Workflow Protection</p>
-          <div className="flex items-baseline gap-1.5 mt-1.5">
-            <span className="text-xs font-semibold text-emerald-700 flex items-center gap-1">
-              <CheckCircle size={14} className="text-emerald-600" /> Isolated Draft
-            </span>
+        {/* Card 4: Workflow Security (Clean White Bento Card) */}
+        <div className="bg-white p-6 rounded-3xl border border-[#E8EDF3] shadow-[0_1px_3px_rgba(15,23,42,0.03)] flex flex-col justify-between min-h-[140px]">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Security Ledger</span>
+            <div className="w-7 h-7 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600">
+              <CheckCircle size={14} />
+            </div>
           </div>
-          <p className="text-[11px] text-slate-400 mt-0.5">Zero premature notifications</p>
+          <div className="mt-4">
+            <div className="flex items-center gap-1.5 text-emerald-700 font-bold text-base">
+              <span>Isolated Sandbox</span>
+            </div>
+            <p className="text-xs text-slate-400 mt-1">Zero unauthorized dispatches</p>
+          </div>
         </div>
       </div>
 
-      {/* Filter and Search Bar */}
-      <div className="bg-white p-3 rounded-xl border border-slate-200/90 flex flex-wrap items-center justify-between gap-3 shadow-2xs font-sans">
-        <div className="flex items-center gap-2 flex-1 min-w-[240px]">
-          <div className="relative w-full max-w-sm">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Search drafts by title, recipient, or doc number..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-800 placeholder-slate-400 focus:bg-white focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20 outline-none transition-all"
-            />
+      {/* Bento Card: Drafts Management Data Table Container */}
+      <div className="bg-white rounded-3xl border border-[#E8EDF3] shadow-[0_1px_3px_rgba(15,23,42,0.03)] p-6">
+        {/* Table Header & Controls */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-slate-100">
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-base font-bold text-[#0F172A]">Active Draft Records</h2>
+              <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-semibold">
+                {filteredDrafts.length} Documents
+              </span>
+            </div>
+            <p className="text-xs text-slate-400 mt-0.5">Resume composition or edit dynamic template parameters</p>
+          </div>
+
+          <div className="flex items-center gap-3 flex-wrap">
+            {/* Search Pill */}
+            <div className="relative w-64">
+              <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search drafts..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-9 pr-3 py-1.5 text-xs bg-[#F4F6F9] hover:bg-[#EEF2F6] focus:bg-white border border-transparent focus:border-slate-300 rounded-full text-slate-800 placeholder-slate-400 outline-none transition-all"
+              />
+            </div>
+
+            {/* Company Filter Dropdown */}
+            <select
+              value={selectedCompanyFilter}
+              onChange={(e) => setSelectedCompanyFilter(e.target.value)}
+              className="text-xs font-semibold bg-[#F4F6F9] border border-transparent hover:border-slate-300 text-slate-700 rounded-full px-3 py-1.5 outline-none cursor-pointer"
+            >
+              <option value="all">All Companies</option>
+              {COMPANIES.map(c => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
-          <span className="text-xs text-slate-500 font-medium">Company:</span>
-          <select
-            value={selectedCompanyFilter}
-            onChange={(e) => setSelectedCompanyFilter(e.target.value)}
-            className="text-xs font-semibold bg-slate-50 border border-slate-200 text-slate-700 rounded-lg px-2.5 py-1.5 outline-none hover:border-slate-300 focus:border-indigo-600 cursor-pointer"
-          >
-            <option value="all">All Companies</option>
-            {COMPANIES.map(c => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {/* Drafts List */}
-      {filteredDrafts.length === 0 ? (
-        <div className="bg-white rounded-xl border border-slate-200/90 p-12 text-center shadow-2xs font-sans">
-          <div className="w-12 h-12 rounded-full bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-400 mx-auto mb-3">
-            <FileEdit size={22} />
+        {/* Drafts List Rows */}
+        {filteredDrafts.length === 0 ? (
+          <div className="py-16 text-center">
+            <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 mx-auto mb-3">
+              <FileEdit size={24} />
+            </div>
+            <h3 className="font-bold text-slate-800 text-base">
+              {allDrafts.length === 0 ? 'No drafts saved yet' : 'No matching drafts found'}
+            </h3>
+            <p className="text-xs text-slate-400 max-w-sm mx-auto mt-1 mb-6 leading-relaxed">
+              {allDrafts.length === 0
+                ? 'Create or import an HR document to start composing in our verified letterhead editor.'
+                : 'Clear your search filters to display all saved documents.'}
+            </p>
+            <button
+              type="button"
+              onClick={onOpenCreate}
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#162A45] hover:bg-[#0F172A] text-white text-xs font-semibold rounded-full shadow-sm transition-all cursor-pointer"
+            >
+              <Plus size={14} />
+              <span>Create New Document</span>
+            </button>
           </div>
-          <h3 className="font-semibold text-slate-800 text-sm">
-            {allDrafts.length === 0 ? 'No drafts saved yet' : 'No matching drafts found'}
-          </h3>
-          <p className="text-xs text-slate-500 max-w-md mx-auto mt-1 mb-5 leading-relaxed">
-            {allDrafts.length === 0
-              ? 'When HR creates or uploads a document and clicks "Save Draft", it stays safely stored in the database so you can resume at any time.'
-              : 'Try clearing your search terms or company filter to see all saved drafts.'}
-          </p>
-          <button
-            type="button"
-            onClick={onOpenCreate}
-            className="inline-flex items-center gap-2 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow-2xs transition-colors cursor-pointer"
-          >
-            <Plus size={14} />
-            <span>Create or Upload a Document</span>
-          </button>
-        </div>
-      ) : (
-        <div className="space-y-2.5 font-sans">
-          {filteredDrafts.map(doc => {
-            const company = getCompanyInfo(doc.companyId);
-            const isUploaded = doc.variableValues?.isUploaded === 'true' || !!doc.variableValues?.uploadedImages;
+        ) : (
+          <div className="divide-y divide-slate-100">
+            {filteredDrafts.map(doc => {
+              const company = getCompanyInfo(doc.companyId);
+              const isUploaded = doc.variableValues?.isUploaded === 'true' || !!doc.variableValues?.uploadedImages;
 
-            return (
-              <div
-                key={doc.id}
-                className="bg-white rounded-xl border border-slate-200/90 hover:border-slate-300 hover:shadow-sm p-4.5 transition-all shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-4"
-              >
-                {/* Left: Document info */}
-                <div className="flex items-start gap-3.5 min-w-0">
-                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 border ${
-                    isUploaded
-                      ? 'bg-amber-50/80 text-amber-700 border-amber-200'
-                      : 'bg-indigo-50/80 text-indigo-700 border-indigo-200'
-                  }`}>
-                    {isUploaded ? <UploadCloud size={19} /> : <FileText size={19} />}
-                  </div>
-
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2 mb-1">
-                      <span className="font-mono text-[11px] font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 tabular-nums">
-                        {doc.documentNumber}
-                      </span>
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-50 text-amber-800 border border-amber-200 flex items-center gap-1">
-                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                        Draft
-                      </span>
-                      <span className="text-[11px] font-medium text-slate-600 bg-slate-50 px-2 py-0.5 rounded border border-slate-200 flex items-center gap-1">
-                        <Building2 size={11} className="text-slate-400" />
-                        {company.name}
-                      </span>
-                      <span className="text-[11px] text-slate-400">
-                        {isUploaded ? '• Uploaded File' : '• Letterhead Template'}
-                      </span>
+              return (
+                <div
+                  key={doc.id}
+                  className="py-4.5 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-[#F8FAFC] -mx-6 px-6 transition-colors group"
+                >
+                  {/* Left: Document info */}
+                  <div className="flex items-center gap-4 min-w-0">
+                    <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 border ${
+                      isUploaded
+                        ? 'bg-amber-50/80 text-amber-700 border-amber-200'
+                        : 'bg-blue-50/80 text-blue-700 border-blue-200'
+                    }`}>
+                      {isUploaded ? <UploadCloud size={20} /> : <FileText size={20} />}
                     </div>
 
-                    <h3 className="font-semibold text-xs text-slate-900 truncate">
-                      {doc.title}
-                    </h3>
-
-                    <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 mt-1">
-                      {doc.personName && (
-                        <span className="flex items-center gap-1">
-                          <User size={12} className="text-slate-400" />
-                          <span>{doc.personName} {doc.personRole ? `(${doc.personRole})` : ''}</span>
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
+                        <span className="font-mono text-[11px] font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200 tabular-nums">
+                          {doc.documentNumber}
                         </span>
-                      )}
-                      <span className="flex items-center gap-1 text-slate-400 text-[11px]">
-                        <Clock size={12} />
-                        <span>Saved {formatRelativeTime(doc.updatedAt || doc.createdAt)}</span>
-                      </span>
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
+                          Draft
+                        </span>
+                        <span className="text-[11px] font-medium text-slate-500">
+                          {company.name}
+                        </span>
+                      </div>
+
+                      <h3 className="font-bold text-sm text-[#0F172A] truncate group-hover:text-[#1E6FD9] transition-colors">
+                        {doc.title}
+                      </h3>
+
+                      <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400 mt-1">
+                        {doc.personName && (
+                          <span className="flex items-center gap-1">
+                            <User size={12} className="text-slate-400" />
+                            <span>{doc.personName} {doc.personRole ? `(${doc.personRole})` : ''}</span>
+                          </span>
+                        )}
+                        <span className="flex items-center gap-1 text-[11px]">
+                          <Clock size={12} />
+                          <span>Saved {formatRelativeTime(doc.updatedAt || doc.createdAt)}</span>
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Right: Actions */}
-                <div className="flex items-center gap-2 self-end md:self-center shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => setDeleteConfirmDoc(doc)}
-                    className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-                    title="Discard Draft"
-                  >
-                    <Trash2 size={15} />
-                  </button>
+                  {/* Right: Action Pills */}
+                  <div className="flex items-center gap-2 self-end md:self-center shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setDeleteConfirmDoc(doc)}
+                      className="w-9 h-9 flex items-center justify-center rounded-full text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                      title="Discard Draft"
+                    >
+                      <Trash2 size={15} />
+                    </button>
 
-                  <button
-                    type="button"
-                    onClick={() => onContinueEditing(doc)}
-                    className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-white hover:bg-slate-50 active:bg-slate-100 text-slate-800 border border-slate-300 text-xs font-semibold transition-all shadow-2xs hover:shadow-xs cursor-pointer"
-                  >
-                    <span>Continue Editing</span>
-                    <ArrowRight size={13} className="text-slate-500" />
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => onContinueEditing(doc)}
+                      className="flex items-center gap-2 px-4 py-2 rounded-full bg-white hover:bg-slate-50 text-slate-800 border border-slate-200 text-xs font-semibold transition-all shadow-2xs hover:shadow-xs cursor-pointer"
+                    >
+                      <span>Continue Editing</span>
+                      <ArrowRight size={13} className="text-slate-500" />
+                    </button>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       {/* Delete Confirmation Modal */}
       {deleteConfirmDoc && (

@@ -852,7 +852,7 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
           )}
         </div>
 
-        {/* 3-Tier Enterprise Action Buttons */}
+        {/* 3-Tier Enterprise Action Buttons (Pill shaped like reference share/verify) */}
         <div className="flex items-center gap-2">
           {currentRole === 'hr' && (
             <>
@@ -861,11 +861,11 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
                 type="button"
                 onClick={() => handleSaveDraft(false)}
                 disabled={isSaving}
-                className="h-8 px-3 rounded-md border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold flex items-center gap-1.5 shadow-2xs active:scale-98 disabled:opacity-50 transition-all cursor-pointer"
+                className="h-8.5 px-3.5 rounded-full border border-slate-200 bg-white hover:bg-slate-50 text-slate-800 text-xs font-semibold flex items-center gap-1.5 shadow-2xs active:scale-98 disabled:opacity-50 transition-all cursor-pointer"
                 title="Save current document state as a draft without requesting signatures"
               >
                 {isSaving ? (
-                  <RefreshCw size={13} className="animate-spin text-indigo-600" />
+                  <RefreshCw size={13} className="animate-spin text-blue-600" />
                 ) : (
                   <Bookmark size={13} className="text-slate-500" />
                 )}
@@ -876,7 +876,7 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
               <button
                 type="button"
                 onClick={handleOpenRequestSignature}
-                className="h-8 px-3.5 rounded-md bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold flex items-center gap-1.5 shadow-xs active:scale-98 transition-all cursor-pointer"
+                className="h-8.5 px-4 rounded-full bg-[#162A45] hover:bg-[#0F172A] text-white text-xs font-semibold flex items-center gap-1.5 shadow-xs active:scale-98 transition-all cursor-pointer"
                 title="Send document for signatory approval"
               >
                 <Send size={13} />
@@ -889,10 +889,10 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
           <button
             type="button"
             onClick={() => setIsPreviewMode(!isPreviewMode)}
-            className={`h-8 px-3 rounded-md text-xs font-semibold flex items-center gap-1.5 shadow-2xs border transition-all cursor-pointer ${
+            className={`h-8.5 px-3.5 rounded-full text-xs font-semibold flex items-center gap-1.5 shadow-2xs border transition-all cursor-pointer ${
               isPreviewMode 
                 ? 'bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100' 
-                : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+                : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
             }`}
           >
             <Eye size={13} />
@@ -900,7 +900,7 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
           </button>
 
           {targetDoc?.status === 'completed' && (
-            <span className="h-8 px-3 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-300 text-xs font-semibold flex items-center gap-1.5">
+            <span className="h-8.5 px-3.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-300 text-xs font-semibold flex items-center gap-1.5">
               <CheckCircle2 size={13} className="text-emerald-600" />
               <span>Cryptographically Sealed</span>
             </span>
@@ -910,7 +910,7 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
             <button
               type="button"
               onClick={handleFinalize}
-              className="h-8 px-3.5 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold rounded-md shadow-xs flex items-center gap-1.5 transition-all active:scale-98 cursor-pointer"
+              className="h-8.5 px-4 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold rounded-full shadow-xs flex items-center gap-1.5 transition-all active:scale-98 cursor-pointer"
               title="Finalize document and generate cryptographic SHA-256 seal"
             >
               <CheckCircle2 size={14} />
@@ -922,7 +922,7 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
           <button
             type="button"
             onClick={handleDownload}
-            className="h-8 px-3.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-md shadow-xs flex items-center gap-1.5 transition-all active:scale-98 cursor-pointer"
+            className="h-8.5 px-4 bg-white hover:bg-slate-50 text-slate-800 border border-slate-200 text-xs font-semibold rounded-full shadow-2xs flex items-center gap-1.5 transition-all active:scale-98 cursor-pointer"
           >
             <Download size={13} />
             <span>Download PDF</span>
@@ -1364,15 +1364,15 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
         )}
       </div>
 
-      {/* ─── Floating Whiteboard Action Palette (Fixed Center Bottom) ─── */}
+      {/* ─── Floating Whiteboard Action Palette (Fixed Center Bottom: Growly Pill Style) ─── */}
       <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-30 flex items-center font-sans">
-        <div className="bg-white/95 backdrop-blur-md rounded-xl shadow-[0_8px_30px_rgba(15,23,42,0.12)] border border-slate-200/90 px-3.5 py-2 flex items-center gap-2">
+        <div className="bg-white/95 backdrop-blur-md rounded-full shadow-[0_8px_30px_rgba(15,23,42,0.12)] border border-slate-200/90 px-4 py-2 flex items-center gap-2.5">
           {/* Hand Move Tool */}
           <button
             type="button"
             onClick={() => setActiveTool('select')}
-            className={`p-1.5 rounded-lg transition-colors ${
-              activeTool === 'select' ? 'bg-slate-900 text-white shadow-2xs' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+            className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
+              activeTool === 'select' ? 'bg-[#162A45] text-white shadow-2xs' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
             }`}
             title="Pan / Select Tool"
           >
@@ -1384,7 +1384,7 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
 
             {/* Signature Status Legend */}
             {currentRole === 'hr' && (
-              <span className="font-semibold text-[10px] text-slate-500 uppercase tracking-wider px-1">Signatures:</span>
+              <span className="font-semibold text-[10px] text-slate-400 uppercase tracking-wider px-1">Signatures:</span>
             )}
 
             {/* Siva Kumar signature button (HR places after OTP authorization) */}
@@ -1397,7 +1397,7 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
                   addSig('/sign1.jpg', 'signature', 'siva_kumar');
                 }}
                 disabled={!(targetDoc?.authorizations?.some(a => a.signatoryRole === 'siva_kumar' && !a.usedAt))}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold text-xs transition-all ${
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full font-semibold text-xs transition-all ${
                   !(targetDoc?.authorizations?.some(a => a.signatoryRole === 'siva_kumar' && !a.usedAt))
                     ? 'text-slate-400 bg-slate-100/70 cursor-not-allowed border border-slate-200/80 opacity-60' 
                     : 'bg-emerald-50 text-emerald-900 hover:bg-emerald-100 border border-emerald-300 shadow-2xs cursor-pointer'
@@ -1423,7 +1423,7 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
                   addSig('/sign2.jpg', 'signature', 'uma_mageshwari');
                 }}
                 disabled={!(targetDoc?.authorizations?.some(a => a.signatoryRole === 'uma_mageshwari' && !a.usedAt))}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold text-xs transition-all ${
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full font-semibold text-xs transition-all ${
                   !(targetDoc?.authorizations?.some(a => a.signatoryRole === 'uma_mageshwari' && !a.usedAt))
                     ? 'text-slate-400 bg-slate-100/70 cursor-not-allowed border border-slate-200/80 opacity-60' 
                     : 'bg-emerald-50 text-emerald-900 hover:bg-emerald-100 border border-emerald-300 shadow-2xs cursor-pointer'
@@ -1444,10 +1444,10 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
               <button
                 type="button"
                 onClick={addOfficialStamp}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-slate-800 bg-white hover:bg-slate-50 border border-slate-300 rounded-lg font-semibold text-xs transition-all shadow-2xs cursor-pointer"
+                className="flex items-center gap-1.5 px-3.5 py-1.5 text-slate-800 bg-white hover:bg-slate-50 border border-slate-200 rounded-full font-semibold text-xs transition-all shadow-2xs cursor-pointer"
                 title="Stamp Corporate Seal"
               >
-                <Stamp size={13} className="text-indigo-600" />
+                <Stamp size={13} className="text-blue-600" />
                 <span>Corporate Seal</span>
               </button>
             )}
@@ -1458,7 +1458,7 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
             <button
               type="button"
               onClick={handleDownload}
-              className="bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-semibold text-xs px-3.5 py-1.5 rounded-lg flex items-center gap-1.5 shadow-xs active:scale-98 transition-all cursor-pointer"
+              className="bg-[#162A45] hover:bg-[#0F172A] active:bg-[#020617] text-white font-semibold text-xs px-4 py-1.5 rounded-full flex items-center gap-1.5 shadow-xs active:scale-98 transition-all cursor-pointer"
               title="Finish & Save Document"
             >
               <Download size={13} />

@@ -79,50 +79,50 @@ export function App() {
   }
 
   return (
-    <div className="h-screen w-screen flex flex-col overflow-hidden bg-white text-[#172b4d] font-sans antialiased select-none">
-      {/* Top Header */}
-      <Header
-        onNavigate={handleNavigate}
-        activeTab={currentTab}
-        onOpenCreate={() => {
-          setSelectedTemplate('asset_acknowledgment');
-          setSignatureDocId(undefined);
-          localStorage.removeItem('signhr_active_doc_id');
-          setBuilderKey(k => k + 1); // Force remount → clean landing screen
-          setCurrentTab('builder');
-          localStorage.setItem('signhr_active_tab', 'builder');
-        }}
+    <div className="h-screen w-screen flex overflow-hidden bg-[#F4F6F9] text-[#0F172A] font-sans antialiased select-none">
+      {/* Left Vertical Navigation Rail (Navy #162A45) */}
+      <Sidebar
+        currentTab={currentTab}
+        setCurrentTab={setCurrentTab}
+        collapsed={collapsed}
+        setCollapsed={setCollapsed}
+        activeDocTemplate={selectedTemplate}
+        onSelectDocTemplate={(tpl) => setSelectedTemplate(tpl)}
         currentRole={currentRole}
-        onRoleChange={(role) => {
-          setCurrentRole(role);
-          localStorage.setItem('signhr_auth_role', role);
-          localStorage.setItem('signhr_auth_status', 'true');
-          DatabaseService.setSessionRole(role);
-        }}
-        onExpireSession={() => setIsSessionExpired(true)}
-        onLogout={() => {
-          localStorage.removeItem('signhr_auth_role');
-          localStorage.removeItem('signhr_auth_status');
-          setIsAuthenticated(false);
-        }}
+        draftsCount={draftsCount}
       />
 
-      {/* Main Container: Sidebar + Content Canvas */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Left Sidebar */}
-        <Sidebar
-          currentTab={currentTab}
-          setCurrentTab={setCurrentTab}
-          collapsed={collapsed}
-          setCollapsed={setCollapsed}
-          activeDocTemplate={selectedTemplate}
-          onSelectDocTemplate={(tpl) => setSelectedTemplate(tpl)}
+      {/* Main Container: Top Header + Content Area */}
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+        {/* Top Header Bar */}
+        <Header
+          onNavigate={handleNavigate}
+          activeTab={currentTab}
+          onOpenCreate={() => {
+            setSelectedTemplate('asset_acknowledgment');
+            setSignatureDocId(undefined);
+            localStorage.removeItem('signhr_active_doc_id');
+            setBuilderKey(k => k + 1); // Force remount → clean landing screen
+            setCurrentTab('builder');
+            localStorage.setItem('signhr_active_tab', 'builder');
+          }}
           currentRole={currentRole}
-          draftsCount={draftsCount}
+          onRoleChange={(role) => {
+            setCurrentRole(role);
+            localStorage.setItem('signhr_auth_role', role);
+            localStorage.setItem('signhr_auth_status', 'true');
+            DatabaseService.setSessionRole(role);
+          }}
+          onExpireSession={() => setIsSessionExpired(true)}
+          onLogout={() => {
+            localStorage.removeItem('signhr_auth_role');
+            localStorage.removeItem('signhr_auth_status');
+            setIsAuthenticated(false);
+          }}
         />
 
         {/* Content Area */}
-        <main className="flex-1 h-full overflow-hidden flex flex-col">
+        <main className="flex-1 h-full overflow-hidden flex flex-col p-4 md:p-6 bg-[#F4F6F9]">
           {currentTab === 'signature' && (
             <SignatureCenter
               documents={documents}
@@ -146,8 +146,8 @@ export function App() {
           )}
 
           {currentTab === 'drafts' && currentRole === 'hr' && (
-            <div className="flex-1 h-full overflow-y-auto p-6 bg-[#f4f5f7]">
-              <div className="max-w-6xl mx-auto">
+            <div className="flex-1 h-full overflow-y-auto">
+              <div className="max-w-7xl mx-auto">
                 <DraftsManager
                   documents={documents}
                   onContinueEditing={(doc) => {
@@ -171,8 +171,8 @@ export function App() {
           )}
 
           {currentTab === 'approval' && (
-            <div className="flex-1 h-full overflow-y-auto p-6 bg-[#f4f5f7]">
-              <div className="max-w-6xl mx-auto">
+            <div className="flex-1 h-full overflow-y-auto">
+              <div className="max-w-7xl mx-auto">
                 <ApprovalWorkflow
                   documents={documents}
                   currentRole={currentRole}
