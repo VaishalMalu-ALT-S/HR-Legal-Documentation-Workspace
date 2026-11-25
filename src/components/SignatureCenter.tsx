@@ -1137,9 +1137,9 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
                 </div>
               )}
 
-              <div className={`w-full h-full flex flex-col justify-between relative z-10 ${selectedCompany.letterheadUrl ? 'pt-[140px] pb-[105px] px-[50px]' : 'p-12 text-[#172b4d]'}`}>
+              <div className={`w-full h-full flex flex-col justify-between relative z-10 ${selectedCompany.letterheadUrl ? 'pt-[175px] pb-[115px] px-[50px]' : 'p-12 text-[#172b4d]'}`}>
                 <div>
-                  {/* Fallback Letterhead Header if no letterheadUrl */}
+                  {/* Fallback Letterhead Header only when company does NOT have a letterheadUrl */}
                   {!selectedCompany.letterheadUrl && (
                     <div className="mb-4">
                       <div className="flex items-end mb-8 w-full relative">
@@ -1170,7 +1170,9 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
                   )}
 
                   {/* Body Content */}
-                  {renderTemplateBody()}
+                  <div className="min-h-[500px]">
+                    {renderTemplateBody()}
+                  </div>
                 </div>
 
                 {/* Signature Acceptance Box */}

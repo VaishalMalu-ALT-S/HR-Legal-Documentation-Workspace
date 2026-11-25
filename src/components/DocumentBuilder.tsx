@@ -1537,7 +1537,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
                   style={{ fontSize: fontSize, "--theme-color": selectedCompany.themeColor } as any}
                   className={`flex-1 outline-none text-[#1e293b] leading-normal font-normal min-h-[700px] cursor-text relative z-10 ${
                     useExactLetterheadBg && pageIdx === 0 && selectedCompany.letterheadUrl
-                      ? 'pt-[140px] pb-[105px] px-[50px]'
+                      ? 'pt-[175px] pb-[115px] px-[50px]'
                       : 'pb-6'
                   }`}
                 />
