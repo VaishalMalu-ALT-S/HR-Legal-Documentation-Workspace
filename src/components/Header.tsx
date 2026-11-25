@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import {
-  Search, Plus, PenTool, FileText, ChevronDown, Shield, LogOut, Lock,
-  Building2, CheckCircle2, Sparkles, Layers
+  Search, Plus, LogOut, Lock, CheckCircle2, ShieldCheck
 } from 'lucide-react';
 
 import { RoleSwitcher } from './RoleSwitcher';
@@ -102,7 +101,7 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
         )}
 
-        {/* Share / Verification Utility Button (matching reference share button) */}
+        {/* Share / Verification Utility Button (matching reference share button with human ShieldCheck) */}
         <button
           type="button"
           onClick={() => {
@@ -110,10 +109,10 @@ export const Header: React.FC<HeaderProps> = ({
             else onNavigate?.('signature');
           }}
           className="h-9 px-3.5 bg-white hover:bg-slate-50 border border-slate-200 text-slate-800 text-xs font-semibold rounded-full flex items-center gap-2 shadow-2xs transition-all cursor-pointer"
-          title="Share & Verify"
+          title="Verify Document Integrity"
         >
-          <Sparkles size={14} className="text-amber-500" />
-          <span className="hidden sm:inline">Ledger</span>
+          <ShieldCheck size={14} className="text-slate-700" />
+          <span className="hidden sm:inline">Verification Ledger</span>
         </button>
 
         {/* Role Switcher Pill Dropdown */}
