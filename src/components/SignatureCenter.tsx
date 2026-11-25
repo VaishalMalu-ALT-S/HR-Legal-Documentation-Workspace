@@ -1125,58 +1125,53 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
               />
             </div>
           ) : (
-            <div className="w-full h-full relative select-text overflow-hidden">
-              {/* Exact Letterhead Background from Letterhead.pdf */}
-              {selectedCompany.letterheadUrl && (
-                <div className="absolute inset-0 w-full h-full pointer-events-none select-none z-0">
-                  <img
-                    src={selectedCompany.letterheadUrl}
-                    alt={`${selectedCompany.name} Letterhead`}
-                    className="w-full h-full object-fill block"
-                  />
-                </div>
-              )}
-
-              <div className={`w-full h-full flex flex-col justify-between relative z-10 ${selectedCompany.letterheadUrl ? 'pt-[175px] pb-[115px] px-[50px]' : 'p-12 text-[#172b4d]'}`}>
-                <div>
-                  {/* Fallback Letterhead Header only when company does NOT have a letterheadUrl */}
-                  {!selectedCompany.letterheadUrl && (
-                    <div className="mb-4">
-                      <div className="flex items-end mb-8 w-full relative">
-                        {/* Company Logo */}
-                        <img
-                          src={selectedCompany.logoUrl}
-                          alt={selectedCompany.name}
-                          className="max-h-[75px] max-w-[260px] object-contain shrink-0"
-                          onError={(e) => {
-                            (e.target as HTMLElement).style.display = 'none';
-                          }}
-                        />
-
-                        {/* Right Side: Address & Thick Bar */}
-                        <div className="flex flex-col flex-1 max-h-[75px] justify-between ml-2">
-                          <div className="flex justify-end w-full">
-                            <div className="border-l-[1.5px] border-slate-400 pl-2.5 py-0.5 text-[10px] leading-[1.3] text-slate-800 text-left font-sans">
-                              <p className="font-bold text-[11px] uppercase text-brand-900 border-b-[1px] border-slate-400 pb-[3px] mb-[3px]">{selectedCompany.headerText}</p>
-                              <div className="whitespace-pre-line text-slate-800">{selectedCompany.address}</div>
-                            </div>
-                          </div>
-                          
-                          {/* Solid Dark Separator Bar matching PDF theme */}
-                          <div className="h-[14px] w-full rounded-l-3xl mb-[4px]" style={{ backgroundColor: selectedCompany.themeColor }}></div>
-                        </div>
+            <div className="w-full min-h-[1123px] relative select-text flex flex-col justify-between bg-white box-border">
+              {/* ── Top Official Header (From Letterhead.pdf) ── */}
+              <div className="w-full shrink-0">
+                {selectedCompany.id === 'link_erp' ? (
+                  <div className="w-full border-b border-[#0b1f3b]/30">
+                    <div className="flex items-center justify-between px-10 pt-8 pb-3">
+                      <img src="/LinkERP.png" alt="Link ERP" className="h-[46px] object-contain" />
+                      <div className="text-right text-[10px] text-slate-800 leading-tight font-sans border-l-2 border-[#0b1f3b] pl-3">
+                        <p className="font-bold text-[11px] text-[#0b1f3b] uppercase">LINK ERP TECHNOLOGIES L.L.C</p>
+                        <p className="text-[9.5px] text-slate-700 font-medium">HILAL SALIM BIN TARRAF BUILDING - 76,<br/>BUR DUBAI, AL WASL - M8, DUBAI</p>
                       </div>
                     </div>
-                  )}
-
-                  {/* Body Content */}
-                  <div className="min-h-[500px]">
-                    {renderTemplateBody()}
+                    <div className="h-[3px] bg-[#0b1f3b] w-full"></div>
                   </div>
+                ) : selectedCompany.id === 'sifratech' ? (
+                  <div className="w-full border-b border-[#042750]/30">
+                    <div className="flex items-center justify-between px-10 pt-8 pb-3">
+                      <img src="/Sifratech.png" alt="Sifratech" className="h-[46px] object-contain" />
+                      <div className="text-right text-[10px] text-slate-800 leading-tight font-sans border-l-2 border-[#042750] pl-3">
+                        <p className="font-bold text-[11px] text-[#042750] uppercase">SIFRATECH CONSULTING LLC</p>
+                        <p className="text-[9.5px] text-slate-700 font-medium">AL MAMZAR BUILDING, PLOT NO. 232-0,<br/>DUBAI, UNITED ARAB EMIRATES.</p>
+                      </div>
+                    </div>
+                    <div className="h-[3px] bg-[#042750] w-full"></div>
+                  </div>
+                ) : (
+                  <div className="w-full border-b border-[#3e4348]/30">
+                    <div className="flex items-center justify-between px-10 pt-8 pb-3">
+                      <img src="/altslogo.png" alt="ALT-S" className="h-[46px] object-contain" />
+                      <div className="text-right text-[10px] text-slate-800 leading-tight font-sans border-l-2 border-[#3e4348] pl-3">
+                        <p className="font-bold text-[11px] text-slate-900 uppercase">ALT-S TECHNOLOGY PRIVATE LIMITED</p>
+                        <p className="text-[9.5px] text-slate-700 font-medium">No. 4, Mullai Street, Thiruvalluvar Nagar, Kamarajnagar,<br/>Poonamallee, Tiruvallur, Tamil Nadu - 600071, INDIA</p>
+                      </div>
+                    </div>
+                    <div className="h-[3px] bg-[#3e4348] w-full"></div>
+                  </div>
+                )}
+              </div>
+
+              {/* ── Document Body Content ── */}
+              <div className="flex-1 px-12 py-8 text-[#172b4d]">
+                <div className="min-h-[500px]">
+                  {renderTemplateBody()}
                 </div>
 
-                {/* Signature Acceptance Box */}
-                <div className="pt-8 pb-4 flex justify-between items-end border-t border-slate-200 mt-8">
+                {/* Signature Acceptance Box (Placed right below content, completely above footer) */}
+                <div className="pt-8 pb-4 flex justify-between items-end border-t border-slate-200 mt-10">
                   <div>
                     <p className="font-bold text-[12px] text-slate-800">{approverName}</p>
                     <p className="text-[11px] text-slate-500">{approverTitle} - {selectedCompany.name}</p>
@@ -1194,6 +1189,67 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
                     <p className="text-[10px] text-slate-500">Sign & date above</p>
                   </div>
                 </div>
+              </div>
+
+              {/* ── Official Letterhead Footer Matching Letterhead.pdf ── */}
+              <div className="w-full shrink-0 select-none mt-auto">
+                {selectedCompany.id === 'link_erp' ? (
+                  <div className="w-full">
+                    <div className="bg-[#0b1f3b] text-white py-1.5 px-6 text-[10px] flex items-center justify-center gap-6">
+                      <span className="flex items-center gap-1.5">
+                        <span className="text-[11px]">☎</span>
+                        <span className="font-sans font-medium">{selectedCompany.phone}</span>
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <span className="text-[11px]">✈</span>
+                        <span className="font-sans font-medium">{selectedCompany.website}</span>
+                      </span>
+                    </div>
+                    <div className="bg-[#245288] text-white py-2 px-6 text-[10px] tracking-wide font-sans font-medium flex items-center justify-center gap-8">
+                      <span>TR No: {selectedCompany.gstin}</span>
+                      <span>CR No:{selectedCompany.cin}</span>
+                    </div>
+                  </div>
+                ) : selectedCompany.id === 'sifratech' ? (
+                  <div className="w-full">
+                    <div className="bg-[#042750] text-white py-1.5 px-6 text-[10px] flex items-center justify-center gap-6">
+                      <span className="flex items-center gap-1.5">
+                        <span className="text-[11px]">☎</span>
+                        <span className="font-sans font-medium">{selectedCompany.phone}</span>
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <span className="text-[11px]">✈</span>
+                        <span className="font-sans font-medium">{selectedCompany.website}</span>
+                      </span>
+                    </div>
+                    <div className="bg-[#214f88] text-white py-2 px-6 text-[10px] tracking-wide font-sans font-medium flex items-center justify-center gap-8">
+                      <span>CR No: {selectedCompany.cin}</span>
+                      <span>TRN: {selectedCompany.gstin}</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="w-full">
+                    <div className="bg-[#3e4348] text-white py-1.5 px-6 text-[9.5px] flex items-center justify-center gap-8">
+                      <span className="flex items-center gap-1.5">
+                        <span className="text-[11px]">☎</span>
+                        <span>{selectedCompany.phone}</span>
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <span className="text-[11px]">✈</span>
+                        <span>{selectedCompany.email}</span>
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <span className="text-[11px]">🌐</span>
+                        <span>{selectedCompany.website}</span>
+                      </span>
+                    </div>
+                    <div className="bg-[#78c8cb] text-slate-900 py-2 px-6 text-[9.5px] font-sans font-semibold flex items-center justify-center gap-4">
+                      <span>CIN: {selectedCompany.cin}</span>
+                      <span>|</span>
+                      <span>GSTIN - {selectedCompany.gstin}</span>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}

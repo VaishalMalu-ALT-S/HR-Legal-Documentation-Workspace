@@ -1467,54 +1467,52 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
                   transform: `scale(${zoomLevel / 100})`,
                   fontFamily: fontFamily
                 }}
-                className={`w-[794px] min-h-[1123px] bg-white shadow-2xl border border-slate-300 relative flex flex-col justify-between box-border text-[#1e293b] overflow-hidden ${
-                  useExactLetterheadBg && pageIdx === 0 && selectedCompany.letterheadUrl
-                    ? 'p-0'
-                    : 'pt-[36px] px-[44px] pb-0'
-                }`}
+                className="w-[794px] min-h-[1123px] bg-white shadow-2xl border border-slate-300 relative flex flex-col justify-between box-border text-[#1e293b] overflow-hidden"
               >
-                {/* ── EXACT 1:1 LETTERHEAD BACKGROUND (From Letterhead.pdf) ── */}
-                {useExactLetterheadBg && pageIdx === 0 && selectedCompany.letterheadUrl ? (
-                  <div className="absolute inset-0 w-full h-full pointer-events-none select-none z-0">
-                    <img
-                      src={selectedCompany.letterheadUrl}
-                      alt={`${selectedCompany.name} Official Letterhead`}
-                      className="w-full h-full object-fill block"
-                    />
-                  </div>
-                ) : null}
-
-                {/* ── Top Header / Headpad (Only when NOT using exact letterhead image) ── */}
-                {showHeadpad && (!useExactLetterheadBg || pageIdx > 0 || !selectedCompany.letterheadUrl) && (
-                  <div className="relative z-10 mb-4">
+                {/* ── Top Header / Headpad (Page 1: Full Letterhead Header, Later Pages: Header Band) ── */}
+                {showHeadpad && (
+                  <div className="w-full shrink-0">
                     {pageIdx === 0 || headpadOnAllPages ? (
-                      /* Page 1: Full Official Headpad fallback */
-                      <div className="mb-4 w-full flex items-end">
-                        {/* Left: Company Logo */}
-                        <img
-                          src={selectedCompany.logoUrl}
-                          alt={`${selectedCompany.name} Logo`}
-                          className="max-h-[85px] max-w-[260px] object-contain shrink-0 object-left-bottom -mb-1 mix-blend-multiply"
-                          onError={(e) => {
-                            (e.target as HTMLElement).style.display = 'none';
-                          }}
-                        />
-
-                        {/* Right: Gray Bar with Text Anchored on Top */}
-                        <div className="flex-1 h-[18px] rounded-l-lg ml-1 relative" style={{ backgroundColor: selectedCompany.themeColor }}>
-                          <div className="absolute right-0 bottom-full text-[10.5px] leading-[1.4] text-slate-800 text-left font-sans border-l-2 border-[color:var(--theme-color)] pl-3 pb-1 w-max pr-1">
-                            <p className="font-bold text-[11px] uppercase text-brand-900 border-b-[1.5px] border-[color:var(--theme-color)] pb-[3px] mb-[3px] mt-0">
-                              {selectedCompany.headerText.toUpperCase()}
-                            </p>
-                            <div className="whitespace-pre-line text-slate-800">
-                              {selectedCompany.address}
+                      /* Page 1: Official Company Header from Letterhead.pdf */
+                      <div className="w-full">
+                        {selectedCompany.id === 'link_erp' ? (
+                          <div className="w-full border-b border-[#0b1f3b]/30">
+                            <div className="flex items-center justify-between px-10 pt-8 pb-3">
+                              <img src="/LinkERP.png" alt="Link ERP" className="h-[46px] object-contain" />
+                              <div className="text-right text-[10px] text-slate-800 leading-tight font-sans border-l-2 border-[#0b1f3b] pl-3">
+                                <p className="font-bold text-[11px] text-[#0b1f3b] uppercase">LINK ERP TECHNOLOGIES L.L.C</p>
+                                <p className="text-[9.5px] text-slate-700 font-medium">HILAL SALIM BIN TARRAF BUILDING - 76,<br/>BUR DUBAI, AL WASL - M8, DUBAI</p>
+                              </div>
                             </div>
+                            <div className="h-[3px] bg-[#0b1f3b] w-full"></div>
                           </div>
-                        </div>
+                        ) : selectedCompany.id === 'sifratech' ? (
+                          <div className="w-full border-b border-[#042750]/30">
+                            <div className="flex items-center justify-between px-10 pt-8 pb-3">
+                              <img src="/Sifratech.png" alt="Sifratech" className="h-[46px] object-contain" />
+                              <div className="text-right text-[10px] text-slate-800 leading-tight font-sans border-l-2 border-[#042750] pl-3">
+                                <p className="font-bold text-[11px] text-[#042750] uppercase">SIFRATECH CONSULTING LLC</p>
+                                <p className="text-[9.5px] text-slate-700 font-medium">AL MAMZAR BUILDING, PLOT NO. 232-0,<br/>DUBAI, UNITED ARAB EMIRATES.</p>
+                              </div>
+                            </div>
+                            <div className="h-[3px] bg-[#042750] w-full"></div>
+                          </div>
+                        ) : (
+                          <div className="w-full border-b border-[#3e4348]/30">
+                            <div className="flex items-center justify-between px-10 pt-8 pb-3">
+                              <img src="/altslogo.png" alt="ALT-S" className="h-[46px] object-contain" />
+                              <div className="text-right text-[10px] text-slate-800 leading-tight font-sans border-l-2 border-[#3e4348] pl-3">
+                                <p className="font-bold text-[11px] text-slate-900 uppercase">ALT-S TECHNOLOGY PRIVATE LIMITED</p>
+                                <p className="text-[9.5px] text-slate-700 font-medium">No. 4, Mullai Street, Thiruvalluvar Nagar, Kamarajnagar,<br/>Poonamallee, Tiruvallur, Tamil Nadu - 600071, INDIA</p>
+                              </div>
+                            </div>
+                            <div className="h-[3px] bg-[#3e4348] w-full"></div>
+                          </div>
+                        )}
                       </div>
                     ) : (
                       /* Subsequent Pages: Neat Header Band */
-                      <div className="pb-2 border-b border-slate-300 flex items-center justify-between text-[10px] text-slate-500">
+                      <div className="px-10 pt-6 pb-2 border-b border-slate-300 flex items-center justify-between text-[10px] text-slate-500">
                         <div className="flex items-center space-x-2">
                           <img src={selectedCompany.logoUrl} alt={selectedCompany.name} className="h-[20px] object-contain" />
                           <span className="font-semibold text-slate-700">{documentTitle}</span>
@@ -1535,20 +1533,16 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
                   suppressContentEditableWarning
                   onInput={() => handlePageInput(pageIdx)}
                   style={{ fontSize: fontSize, "--theme-color": selectedCompany.themeColor } as any}
-                  className={`flex-1 outline-none text-[#1e293b] leading-normal font-normal min-h-[700px] cursor-text relative z-10 ${
-                    useExactLetterheadBg && pageIdx === 0 && selectedCompany.letterheadUrl
-                      ? 'pt-[175px] pb-[115px] px-[50px]'
-                      : 'pb-6'
-                  }`}
+                  className="flex-1 outline-none text-[#1e293b] leading-normal font-normal min-h-[700px] cursor-text px-12 py-8"
                 />
 
                 {/* ── Official Letterhead Footer Matching Letterhead.pdf ── */}
-                {showFooter && (!useExactLetterheadBg || pageIdx > 0 || !selectedCompany.letterheadUrl) && (
-                  <div className="select-none relative z-10 mt-auto w-full -mx-[44px] shrink-0" style={{ width: 'calc(100% + 88px)' }}>
+                {showFooter && (
+                  <div className="select-none mt-auto w-full shrink-0">
                     {selectedCompany.id === 'link_erp' ? (
                       /* Exact Link ERP Footer from Letterhead.pdf Page 1 */
                       <div className="w-full">
-                        <div className="bg-[#0b1f3b] text-white py-1 px-6 text-[10px] flex items-center justify-center gap-6">
+                        <div className="bg-[#0b1f3b] text-white py-1.5 px-6 text-[10px] flex items-center justify-center gap-6">
                           <span className="flex items-center gap-1.5">
                             <span className="text-[11px]">☎</span>
                             <span className="font-sans font-medium">{selectedCompany.phone}</span>
@@ -1558,7 +1552,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
                             <span className="font-sans font-medium">{selectedCompany.website}</span>
                           </span>
                         </div>
-                        <div className="bg-[#245288] text-white py-1.5 px-6 text-[10px] tracking-wide font-sans font-medium flex items-center justify-center gap-8">
+                        <div className="bg-[#245288] text-white py-2 px-6 text-[10px] tracking-wide font-sans font-medium flex items-center justify-center gap-8">
                           <span>TR No: {selectedCompany.gstin}</span>
                           <span>CR No:{selectedCompany.cin}</span>
                         </div>
@@ -1566,7 +1560,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
                     ) : selectedCompany.id === 'sifratech' ? (
                       /* Exact Sifratech Footer from Letterhead.pdf Page 2 */
                       <div className="w-full">
-                        <div className="bg-[#042750] text-white py-1 px-6 text-[10px] flex items-center justify-center gap-6">
+                        <div className="bg-[#042750] text-white py-1.5 px-6 text-[10px] flex items-center justify-center gap-6">
                           <span className="flex items-center gap-1.5">
                             <span className="text-[11px]">☎</span>
                             <span className="font-sans font-medium">{selectedCompany.phone}</span>
@@ -1576,7 +1570,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
                             <span className="font-sans font-medium">{selectedCompany.website}</span>
                           </span>
                         </div>
-                        <div className="bg-[#214f88] text-white py-1.5 px-6 text-[10px] tracking-wide font-sans font-medium flex items-center justify-center gap-8">
+                        <div className="bg-[#214f88] text-white py-2 px-6 text-[10px] tracking-wide font-sans font-medium flex items-center justify-center gap-8">
                           <span>CR No: {selectedCompany.cin}</span>
                           <span>TRN: {selectedCompany.gstin}</span>
                         </div>
@@ -1584,7 +1578,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
                     ) : (
                       /* Exact ALT-S Footer from Letterhead.pdf Page 3 */
                       <div className="w-full">
-                        <div className="bg-[#3e4348] text-white py-1 px-6 text-[9.5px] flex items-center justify-center gap-8">
+                        <div className="bg-[#3e4348] text-white py-1.5 px-6 text-[9.5px] flex items-center justify-center gap-8">
                           <span className="flex items-center gap-1.5">
                             <span className="text-[11px]">☎</span>
                             <span>{selectedCompany.phone}</span>
@@ -1598,7 +1592,7 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
                             <span>{selectedCompany.website}</span>
                           </span>
                         </div>
-                        <div className="bg-[#78c8cb] text-slate-900 py-1.5 px-6 text-[9.5px] font-sans font-semibold flex items-center justify-center gap-4">
+                        <div className="bg-[#78c8cb] text-slate-900 py-2 px-6 text-[9.5px] font-sans font-semibold flex items-center justify-center gap-4">
                           <span>CIN: {selectedCompany.cin}</span>
                           <span>|</span>
                           <span>GSTIN - {selectedCompany.gstin}</span>
