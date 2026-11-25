@@ -11,6 +11,102 @@ export interface CompanyDocTemplate {
 
 export const COMPANY_TEMPLATES: CompanyDocTemplate[] = [
   {
+    id: 'alt_s_official_letterhead',
+    name: '1. ALT-S Technology Letterhead Template',
+    category: 'HR',
+    description: 'Official letterhead template for ALT-S Technology Private Limited (Poonamallee, Chennai, India)',
+    sourceDoc: 'Official ALT-S Technology Letterhead (Page 3)',
+    pages: [
+      `<h2 class="text-center text-base font-bold underline my-3 text-slate-900 tracking-wide">Official Communication</h2>
+<div class="my-3 space-y-1 text-xs text-slate-800">
+  <p><strong>Date:</strong> 10-August-2026</p>
+  <p><strong>Ref No:</strong> ALTS/HR/2026/01</p>
+  <p><strong>To:</strong> [Recipient Name / Organization]</p>
+  <p><strong>Subject:</strong> Official Corporate Communication</p>
+</div>
+<div class="my-4 text-xs text-slate-700 leading-relaxed min-h-[400px]">
+  <p>Dear Sir/Madam,</p>
+  <p class="mt-2">[Type or paste your official company letter, notice, certification, or agreement content here...]</p>
+</div>
+<div class="mt-8 pt-4 border-t border-slate-200 flex justify-between items-end">
+  <div class="space-y-4 text-xs text-slate-800">
+    <p><strong>Signature of Recipient:</strong> ______________________</p>
+    <p><strong>Date:</strong> _____________________</p>
+  </div>
+  <div class="text-right text-xs text-slate-700">
+    <p class="font-bold text-slate-900">For ALT-S Technology Private Limited</p>
+    <p class="mt-4 font-semibold">Umamaheshwari. S</p>
+    <p class="text-[11px] text-slate-500">Managing Director / Authorized Signatory</p>
+  </div>
+</div>`
+    ],
+    get content() { return this.pages.join('\n<hr class="my-6 border-dashed border-slate-300"/>\n'); }
+  },
+  {
+    id: 'link_erp_official_letterhead',
+    name: '2. Link ERP Technologies Letterhead Template',
+    category: 'HR',
+    description: 'Official letterhead template for Link ERP Technologies L.L.C (Bur Dubai, Dubai, UAE)',
+    sourceDoc: 'Official Link ERP Technologies Letterhead (Page 1)',
+    pages: [
+      `<h2 class="text-center text-base font-bold underline my-3 text-slate-900 tracking-wide">Official Communication</h2>
+<div class="my-3 space-y-1 text-xs text-slate-800">
+  <p><strong>Date:</strong> 10-August-2026</p>
+  <p><strong>Ref No:</strong> LERP/DXB/2026/01</p>
+  <p><strong>To:</strong> [Recipient Name / Organization]</p>
+  <p><strong>Subject:</strong> Official Corporate Communication</p>
+</div>
+<div class="my-4 text-xs text-slate-700 leading-relaxed min-h-[400px]">
+  <p>Dear Sir/Madam,</p>
+  <p class="mt-2">[Type or paste your official Link ERP Technologies agreement, scope of work, appointment, or verification letter here...]</p>
+</div>
+<div class="mt-8 pt-4 border-t border-slate-200 flex justify-between items-end">
+  <div class="space-y-4 text-xs text-slate-800">
+    <p><strong>Signature of Recipient:</strong> ______________________</p>
+    <p><strong>Date:</strong> _____________________</p>
+  </div>
+  <div class="text-right text-xs text-slate-700">
+    <p class="font-bold text-slate-900">For Link ERP Technologies L.L.C</p>
+    <p class="mt-4 font-semibold">Authorized Signatory</p>
+    <p class="text-[11px] text-slate-500">Executive Management</p>
+  </div>
+</div>`
+    ],
+    get content() { return this.pages.join('\n<hr class="my-6 border-dashed border-slate-300"/>\n'); }
+  },
+  {
+    id: 'sifratech_official_letterhead',
+    name: '3. Sifratech Consulting Letterhead Template',
+    category: 'HR',
+    description: 'Official letterhead template for Sifratech Consulting LLC (Al Mamzar, Dubai, UAE)',
+    sourceDoc: 'Official Sifratech Consulting Letterhead (Page 2)',
+    pages: [
+      `<h2 class="text-center text-base font-bold underline my-3 text-slate-900 tracking-wide">Official Communication</h2>
+<div class="my-3 space-y-1 text-xs text-slate-800">
+  <p><strong>Date:</strong> 10-August-2026</p>
+  <p><strong>Ref No:</strong> SIFRA/DXB/2026/01</p>
+  <p><strong>To:</strong> [Recipient Name / Organization]</p>
+  <p><strong>Subject:</strong> Official Corporate Communication</p>
+</div>
+<div class="my-4 text-xs text-slate-700 leading-relaxed min-h-[400px]">
+  <p>Dear Sir/Madam,</p>
+  <p class="mt-2">[Type or paste your official Sifratech Consulting consulting engagement, proposal, appointment, or contract here...]</p>
+</div>
+<div class="mt-8 pt-4 border-t border-slate-200 flex justify-between items-end">
+  <div class="space-y-4 text-xs text-slate-800">
+    <p><strong>Signature of Recipient:</strong> ______________________</p>
+    <p><strong>Date:</strong> _____________________</p>
+  </div>
+  <div class="text-right text-xs text-slate-700">
+    <p class="font-bold text-slate-900">For Sifratech Consulting LLC</p>
+    <p class="mt-4 font-semibold">Authorized Signatory</p>
+    <p class="text-[11px] text-slate-500">Managing Partner</p>
+  </div>
+</div>`
+    ],
+    get content() { return this.pages.join('\n<hr class="my-6 border-dashed border-slate-300"/>\n'); }
+  },
+  {
     id: 'blank_document',
     name: 'Untitled Document',
     category: 'Blank',

@@ -76,12 +76,12 @@ export class DocumentProcessor {
     const isLink = interpolatedContent.toLowerCase().includes('link erp') || values.company_name?.toLowerCase().includes('link erp') || values.companyId === 'link_erp';
     const isSifra = interpolatedContent.toLowerCase().includes('sifra') || values.company_name?.toLowerCase().includes('sifra') || values.companyId === 'sifratech';
     
-    const companyName = isLink ? 'Link ERP Enterprise Systems' : (isSifra ? 'Sifratech Solutions' : 'ALT-S TECHNOLOGY PRIVATE LIMITED');
+    const companyName = isLink ? 'Link ERP Technologies L.L.C' : (isSifra ? 'Sifratech Consulting LLC' : 'ALT-S TECHNOLOGY PRIVATE LIMITED');
     const logoUrl = isLink ? '/LinkERP.png' : (isSifra ? '/Sifratech.png' : '/altslogo.png');
     const companyAddress = isLink
-      ? 'Link ERP Hub, Mumbai, India'
+      ? 'Hilal Salim Bin Tarraf Building - 76,\nBur Dubai, Al Wasl - M8, Dubai, UAE'
       : (isSifra 
-          ? 'Sifratech Tech Park, Bangalore, India'
+          ? 'Al Mamzar Building, Plot No. 232-0,\nDubai, United Arab Emirates'
           : 'No. 4, Mullai Street, Thiruvalluvar Nagar,\nKamarajnagar, Poonamallee, Tiruvallur,\nTamil Nadu - 600071, INDIA');
 
     // Annexure I Compensation Table renderer if placeholders exist

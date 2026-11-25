@@ -2,6 +2,7 @@ export interface CompanyBrand {
   id: string;
   name: string;
   logoUrl: string;
+  letterheadUrl?: string;
   headerText: string;
   footerText: string;
   themeColor: string;
@@ -15,39 +16,12 @@ export interface CompanyBrand {
 
 export const COMPANIES: CompanyBrand[] = [
   {
-    id: 'sifratech',
-    name: 'Sifratech',
-    logoUrl: '/Sifratech.png',
-    headerText: 'Sifratech Solutions',
-    footerText: 'Sifratech Solutions Private Limited • Confidential',
-    themeColor: '#0052cc',
-    address: 'Sifratech Tech Park, Bangalore, India',
-    phone: '+91 80 4567 8900',
-    email: 'contact@sifratech.in',
-    website: 'www.sifratech.in',
-    cin: 'U72900KA2020PTC123456',
-    gstin: '29AAECS1234F1Z1',
-  },
-  {
-    id: 'link_erp',
-    name: 'Link ERP',
-    logoUrl: '/LinkERP.png',
-    headerText: 'Link ERP Enterprise Systems',
-    footerText: 'Link ERP Solutions • Strictly Confidential',
-    themeColor: '#0c5c9e', // Professional Blue to match their logo
-    address: 'Link ERP Hub, Mumbai, India',
-    phone: '+91 22 2845 6789',
-    email: 'info@linkerp.com',
-    website: 'www.linkerp.com',
-    cin: 'U72200MH2015PTC789012',
-    gstin: '27AABCL5678G1Z2',
-  },
-  {
     id: 'alt_s',
-    name: 'ALT-S Technology',
+    name: 'ALT-S Technology Private Limited',
     logoUrl: '/altslogo.png',
+    letterheadUrl: '/alts_letterhead.jpg',
     headerText: 'ALT-S TECHNOLOGY PRIVATE LIMITED',
-    footerText: 'ALT-S Technology Private Limited • All Rights Reserved',
+    footerText: 'CIN: U62099TN2023PTC163053 | GSTIN: 33AAZCA2708F1ZN',
     themeColor: '#0a3161',
     address: 'No. 4, Mullai Street, Thiruvalluvar Nagar,\nKamarajnagar, Poonamallee, Tiruvallur,\nTamil Nadu - 600071, INDIA',
     phone: '+91 78455 03084',
@@ -55,5 +29,35 @@ export const COMPANIES: CompanyBrand[] = [
     website: 'www.alt-s.in',
     cin: 'U62099TN2023PTC163053',
     gstin: '33AAZCA2708F1ZN',
+  },
+  {
+    id: 'link_erp',
+    name: 'Link ERP Technologies L.L.C',
+    logoUrl: '/LinkERP.png',
+    letterheadUrl: '/linkerp_letterhead.jpg',
+    headerText: 'LINK ERP TECHNOLOGIES L.L.C',
+    footerText: 'TR No: 105272498400003  CR No: 105272498400001',
+    themeColor: '#0c5c9e',
+    address: 'Hilal Salim Bin Tarraf Building - 76,\nBur Dubai, Al Wasl - M8, Dubai, UAE',
+    phone: '+971508568455',
+    email: 'info@linkerptech.com',
+    website: 'linkerptech.com',
+    cin: 'CR: 105272498400001',
+    gstin: 'TRN: 105272498400003',
+  },
+  {
+    id: 'sifratech',
+    name: 'Sifratech Consulting LLC',
+    logoUrl: '/Sifratech.png',
+    letterheadUrl: '/sifratech_letterhead.jpg',
+    headerText: 'SIFRATECH CONSULTING LLC',
+    footerText: 'CR No: 105310106700001  TRN: 105310106700003',
+    themeColor: '#04579D',
+    address: 'Al Mamzar Building, Plot No. 232-0,\nDubai, United Arab Emirates',
+    phone: '+971524581340',
+    email: 'contact@sifratc.com',
+    website: 'sifratc.com',
+    cin: 'CR: 105310106700001',
+    gstin: 'TRN: 105310106700003',
   }
 ];

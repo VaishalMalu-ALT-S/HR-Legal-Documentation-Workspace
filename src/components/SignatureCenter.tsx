@@ -1149,8 +1149,8 @@ export const SignatureCenter: React.FC<SignatureCenterProps> = ({
                         </div>
                       </div>
                       
-                      {/* Solid Dark Separator Bar matching PDF */}
-                      <div className="h-[14px] w-full rounded-l-3xl mb-[4px]" style={{ backgroundColor: '#474a51' }}></div>
+                      {/* Solid Dark Separator Bar matching PDF theme */}
+                      <div className="h-[14px] w-full rounded-l-3xl mb-[4px]" style={{ backgroundColor: selectedCompany.themeColor }}></div>
                     </div>
                   </div>
                 </div>

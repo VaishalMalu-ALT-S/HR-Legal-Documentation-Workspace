@@ -1532,11 +1532,11 @@ export const DocumentBuilder: React.FC<DocumentBuilderProps> = ({
                       <p>Phone: {selectedCompany.phone}</p>
                     </div>
 
-                    {/* Official Corporate Identification & GSTIN Bar */}
-                    <div className="text-white px-3 py-1 text-[8px] flex items-center justify-between rounded-sm mt-1" style={{ backgroundColor: selectedCompany.themeColor }}>
-                      <span>CIN: <strong className="font-mono text-cyan-300">{selectedCompany.cin}</strong></span>
-                      <span>{selectedCompany.headerText.toUpperCase()}</span>
-                      <span>GSTIN: <strong className="font-mono text-cyan-300">{selectedCompany.gstin}</strong></span>
+                    {/* Official Corporate Identification & Tax Registration Bar */}
+                    <div className="text-white px-3 py-1.5 text-[8.5px] flex items-center justify-between rounded-sm mt-1" style={{ backgroundColor: selectedCompany.themeColor }}>
+                      <span>{selectedCompany.id === 'alt_s' ? 'CIN: ' : 'CR: '}<strong className="font-mono text-cyan-200">{selectedCompany.cin}</strong></span>
+                      <span className="font-semibold tracking-wide">{selectedCompany.headerText.toUpperCase()}</span>
+                      <span>{selectedCompany.id === 'alt_s' ? 'GSTIN: ' : 'TRN: '}<strong className="font-mono text-cyan-200">{selectedCompany.gstin}</strong></span>
                     </div>
                   </div>
                 )}
